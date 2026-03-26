@@ -372,6 +372,8 @@
 @media (max-width: 1024px) {
   .fe-image { grid-column: 1 / -1; }
   .fe-content { grid-column: 1 / -1; margin-top: -100px; padding: 3rem; }
+  .stats-section { background-attachment: scroll; } /* Fix iPad Safari background-cover parallax bug */
+  .stats-overlay { background: rgba(18, 51, 55, 0.75); } /* Balanced transparency for tablet */
   .news-layout { grid-template-columns: 1fr; gap: 4rem; }
   .leadership-panel { padding: 4rem 3rem; }
   .newsletter-box { flex-direction: column; text-align: center; gap: 2.5rem; padding: 4rem 3rem; }
