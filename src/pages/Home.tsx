@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Building2, TrendingUp, Users, ArrowRight } from 'lucide-react';
-import heroBg from '../assets/hero.png';
 import './Home.css';
 
 const pillars = [
@@ -42,8 +41,8 @@ const Home = () => {
       <section className="hero-section">
         <div className="hero-overlay"></div>
         <img 
-          src={heroBg} 
-          alt="JSR Hotels Main Exterior" 
+          src="/hero-bg.png" 
+          alt="Luxury Hotel Exterior" 
           className="hero-img"
         />
         <div className="hero-content container">
