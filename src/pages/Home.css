@@ -17,7 +17,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  z-index: -2;
+  z-index: 1; /* Positive stack avoids body background painting over it */
 }
 
 .hero-overlay {
@@ -27,10 +27,12 @@
   width: 100%;
   height: 100%;
   background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%);
-  z-index: -1;
+  z-index: 2;
 }
 
 .hero-content {
+  position: relative;
+  z-index: 3;
   color: var(--color-white);
   padding: 2rem 0;
 }
