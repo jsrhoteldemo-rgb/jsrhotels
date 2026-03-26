@@ -11,7 +11,7 @@ const Contact = () => {
           transition={{ duration: 0.8 }}
           style={{ marginBottom: '4rem' }}
         >
-          <h1 style={{ fontSize: '3.5rem', marginBottom: '1rem', color: 'var(--color-text-main)' }}>Contact Us</h1>
+          <h1 style={{ fontSize: '3.5rem', marginBottom: '1rem', color: 'var(--color-accent)' }}>Contact Us</h1>
           <p style={{ maxWidth: '600px', color: 'var(--color-text-muted)', fontSize: '1.1rem' }}>
             We're here to assist you with any inquiries or investment opportunities. Please feel free to reach out.
           </p>
