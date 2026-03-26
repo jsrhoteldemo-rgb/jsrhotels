@@ -10,7 +10,7 @@ const Privacy = () => {
           transition={{ duration: 0.8 }}
           style={{ marginBottom: '3rem' }}
         >
-          <h1 style={{ fontSize: '3rem', color: 'var(--color-text-main)', marginBottom: '1rem' }}>Privacy Policy</h1>
+          <h1 style={{ fontSize: '3rem', color: 'var(--color-accent)', marginBottom: '1rem' }}>Privacy Policy</h1>
           <p style={{ color: 'var(--color-text-muted)' }}>Last Updated: {new Date().toLocaleDateString()}</p>
         </motion.div>
         <div style={{ color: 'var(--color-text-main)', lineHeight: 1.8 }}>
