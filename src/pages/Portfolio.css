@@ -47,9 +47,14 @@
   line-height: 1.6;
 }
 
+@media (max-width: 1024px) {
+  .portfolio-content { padding: 2.5rem; }
+}
+
 @media (max-width: 768px) {
   .portfolio-grid {
     grid-template-columns: 1fr;
     gap: 2rem;
   }
+  .portfolio-content { padding: 2rem; }
 }

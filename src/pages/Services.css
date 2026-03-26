@@ -55,6 +55,12 @@
   color: var(--color-text-main);
 }
 
+@media (max-width: 1024px) {
+  .services-grid { gap: 2rem; }
+  .service-card { padding: 2.5rem 2rem; }
+  .services-cta { padding: 3rem 2.5rem; }
+}
+
 @media (max-width: 768px) {
   .services-grid { gap: 1.5rem; }
   .service-card { padding: 2rem 1.5rem; }

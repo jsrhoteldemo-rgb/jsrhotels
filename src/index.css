@@ -59,7 +59,7 @@ button {
 .container {
   max-width: var(--spacing-container);
   margin: 0 auto;
-  padding: 0 2.5rem; /* Generous breathing room on larger screens */
+  padding: 0 3rem; /* Elite breathing room for large displays */
 }
 
 .section-padding {
@@ -127,12 +127,22 @@ textarea:focus-visible {
   transform: scale(1.05);
 }
 
+/* Tablet & iPad Adjustments */
+@media (max-width: 1024px) {
+  .section-padding {
+    padding: 5rem 0;
+  }
+  .container {
+    padding: 0 2.5rem; /* Professional gap for tablet viewports */
+  }
+}
+
 /* Mobile Global Adjustments */
 @media (max-width: 768px) {
   .section-padding {
     padding: 3.5rem 0;
   }
   .container {
-    padding: 0 1.5rem; /* Safe 24px clearance from mobile phone screen edges */
+    padding: 0 2rem; /* Enhanced clearance for mobile devices */
   }
 }
