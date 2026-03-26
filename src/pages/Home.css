@@ -380,6 +380,8 @@
   .section-title { font-size: 2.2rem; }
   .pillars-grid { grid-template-columns: 1fr; gap: 2rem; }
   .intro-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .stats-section { background-attachment: scroll; } /* Fix iOS Safari background-cover parallax bug */
+  .stats-overlay { background: rgba(18, 51, 55, 0.65); } /* Increased transparency for mobile visibility */
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
   .accolades-grid { grid-template-columns: 1fr; gap: 2rem; }
   .leadership-panel { padding: 2.5rem 1.5rem; }
