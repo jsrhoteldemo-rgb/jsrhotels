@@ -1,0 +1,387 @@
+/* Home Page Styles */
+
+.hero-section {
+  position: relative;
+  height: 100vh;
+  min-height: 700px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.hero-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%);
+  z-index: -1;
+}
+
+.hero-content {
+  color: var(--color-white);
+  padding: 2rem 0;
+}
+
+.hero-content h1 {
+  font-size: clamp(2.5rem, 5vw + 1rem, 4.5rem);
+  letter-spacing: 2px;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.hero-content p {
+  font-size: 1.25rem;
+  max-width: 600px;
+  margin: 0 auto 2.5rem auto;
+  font-weight: 300;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* Common Section Titles */
+.section-subtitle {
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-title {
+  font-size: 3rem;
+  margin-bottom: 3rem;
+  color: var(--color-text-main);
+}
+
+/* NEW: Pillars Section */
+.pillars-section {
+  background-color: var(--color-bg);
+}
+
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+}
+
+.pillar-card {
+  padding: 3rem 2rem;
+  text-align: center;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.pillar-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.06);
+}
+
+.pillar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: rgba(158, 127, 34, 0.1);
+  color: var(--color-accent);
+  margin-bottom: 1.5rem;
+}
+
+.pillar-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.pillar-card p {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+/* Intro Section */
+.intro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+.intro-text h5 {
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.intro-text h2 {
+  font-size: 3rem;
+  color: var(--color-text-main);
+  margin-bottom: 1.5rem;
+}
+
+.intro-text p {
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+}
+
+.link-accent {
+  color: var(--color-accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.9rem;
+}
+
+.link-accent:hover {
+  color: var(--color-text-main);
+}
+
+.intro-image img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+/* NEW: Stats Section */
+.stats-section {
+  position: relative;
+  padding: 8rem 0;
+  background: url('/stats-bg.png') no-repeat center center;
+  background-size: cover;
+  background-attachment: fixed;
+  color: var(--color-white);
+}
+
+.stats-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(18, 51, 55, 0.85); /* Deep slate-teal luxury tint */
+  z-index: 1;
+}
+
+.stats-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  text-align: center;
+}
+
+.stat-item h2 {
+  font-size: 4rem;
+  color: var(--color-accent);
+  margin-bottom: 0.5rem;
+}
+
+.stat-item p {
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 500;
+}
+
+/* Featured Experience */
+.featured-experience {
+  padding: 6rem 0;
+  background-color: var(--color-white);
+}
+
+.fe-container {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  align-items: center;
+}
+
+.fe-image { grid-column: 1 / 10; height: 600px; }
+.fe-image img { width: 100%; height: 100%; object-fit: cover; }
+
+.fe-content {
+  grid-column: 7 / -1;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.1);
+}
+
+.fe-content h5 { color: var(--color-accent); text-transform: uppercase; letter-spacing: 2px; font-size: 0.9rem; margin-bottom: 1rem; }
+.fe-content h2 { font-size: 2.5rem; color: var(--color-text-main); margin-bottom: 1.5rem; }
+.fe-content p { color: var(--color-text-muted); font-size: 1.1rem; margin-bottom: 1.5rem; line-height: 1.6; }
+
+/* NEW: News Section */
+.news-section { background-color: var(--color-bg); }
+
+.news-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+}
+
+.leadership-panel {
+  background: var(--color-white);
+  padding: 4rem;
+  border-radius: 8px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.04);
+  border: 1px solid var(--color-border);
+}
+
+.quote-badge {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  border: 3px solid var(--color-accent);
+}
+
+.quote-badge img { width: 100%; height: 100%; object-fit: cover; }
+
+.leadership-panel h3 {
+  font-size: 1.6rem;
+  line-height: 1.6;
+  font-style: italic;
+  font-family: var(--font-header);
+  color: var(--color-text-main);
+  margin-bottom: 2rem;
+}
+
+.quote-author {
+  font-weight: 600;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.feed-title {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+}
+
+.news-card {
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.news-card:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.news-date {
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.news-card h4 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.news-card p {
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+
+/* Accolades Section */
+.accolades-section { background-color: var(--color-white); } /* Contrast alternate */
+
+.accolades-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem;
+}
+
+.accolade-item { padding: 2rem; text-align: center; }
+.stars { color: var(--color-accent); font-size: 1.5rem; letter-spacing: 4px; display: block; margin-bottom: 1rem; }
+.accolade-item h4 { font-family: var(--font-header); font-size: 1.3rem; color: var(--color-text-main); margin-bottom: 0.5rem; }
+.accolade-item p { color: var(--color-text-muted); font-size: 0.95rem; }
+
+/* NEW: Newsletter Section */
+.newsletter-section {
+  background-color: var(--color-bg);
+  padding-bottom: 3rem; /* Reduce dead space before footer */
+}
+
+.newsletter-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4rem;
+  border-radius: 8px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.05);
+  gap: 3rem;
+}
+
+.nl-content h2 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.nl-content p { color: var(--color-text-muted); font-size: 1.1rem; }
+
+.nl-form {
+  display: flex;
+  flex: 1;
+  max-width: 500px;
+  gap: 1rem;
+}
+
+.nl-form input {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  background: var(--color-bg);
+}
+
+.nl-form input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.nl-form .btn-primary {
+  padding: 1rem 2rem;
+}
+
+/* Responsive Overrides */
+@media (max-width: 1024px) {
+  .fe-image { grid-column: 1 / -1; }
+  .fe-content { grid-column: 1 / -1; margin-top: -100px; }
+  .news-layout { grid-template-columns: 1fr; gap: 3rem; }
+  .newsletter-box { flex-direction: column; text-align: center; gap: 2rem; }
+  .nl-form { width: 100%; max-width: none; flex-direction: column; }
+}
+
+@media (max-width: 768px) {
+  .hero-content h1 { font-size: 2.8rem; }
+  .section-title { font-size: 2.2rem; }
+  .pillars-grid { grid-template-columns: 1fr; gap: 2rem; }
+  .intro-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .accolades-grid { grid-template-columns: 1fr; gap: 2rem; }
+  .leadership-panel { padding: 2.5rem 1.5rem; }
+  .newsletter-box { padding: 2.5rem 1.5rem; }
+}
