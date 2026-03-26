@@ -55,7 +55,7 @@ button {
 .container {
   max-width: var(--spacing-container);
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 2.5rem; /* Generous breathing room on larger screens */
 }
 
 .section-padding {
@@ -68,6 +68,18 @@ button {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Inner Page Universal Clearance */
+.inner-page-padding {
+  padding-top: 130px;
+  background-color: var(--color-bg);
+}
+
+@media (max-width: 768px) {
+  .inner-page-padding {
+    padding-top: 105px; /* Safely clears the mobile navbar while removing excess empty space */
+  }
 }
 
 /* Global Buttons & Keyboard A11y */
@@ -117,6 +129,6 @@ textarea:focus-visible {
     padding: 3.5rem 0;
   }
   .container {
-    padding: 0 1rem;
+    padding: 0 1.5rem; /* Safe 24px clearance from mobile phone screen edges */
   }
 }

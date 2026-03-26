@@ -3,7 +3,7 @@ import './Contact.css';
 
 const Contact = () => {
   return (
-    <div className="page-wrapper" style={{ paddingTop: '80px', backgroundColor: 'var(--color-bg)' }}>
+    <div className="page-wrapper inner-page-padding">
       <div className="container section-padding">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}

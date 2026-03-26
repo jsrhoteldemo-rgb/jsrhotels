@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 
 const About = () => {
   return (
-    <div className="page-wrapper">
-      <div className="container section-padding" style={{ marginTop: '5rem' }}>
+    <div className="page-wrapper inner-page-padding">
+      <div className="container section-padding">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
