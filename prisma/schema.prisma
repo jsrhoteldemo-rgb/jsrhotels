@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PortfolioStatus {
+  UNDER_CONSTRUCTION
+  COMPLETED
+}
+
+enum LegalDocumentType {
+  PRIVACY
+  TERMS
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+}
+
+enum ContactMessageStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  ARCHIVED
+}
+
+enum CareerApplicationStatus {
+  NEW
+  REVIEWING
+  SHORTLISTED
+  REJECTED
+  HIRED
+}
+
+model Admin {
+  id             String        @id @default(cuid())
+  fullName       String
+  email          String        @unique
+  passwordHash   String
+  isSystemAdmin  Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  activityLogs   ActivityLog[]
+}
+
+model MediaAsset {
+  id               String              @id @default(cuid())
+  originalName     String
+  storedName       String
+  mimeType         String
+  size             Int
+  url              String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  homeBlocks       HomeBlock[]
+  aboutSections    AboutSection[]
+  serviceItems     ServiceItem[]
+  teamMembers      TeamMember[]
+  hotelBrands      HotelBrand[]
+  coverProperties  PortfolioProperty[] @relation("PropertyCoverImage")
+  propertyImages   PropertyImage[]
+  siteSettings     SiteSetting[]
+}
+
+model HomeBlock {
+  id            String     @id @default(cuid())
+  type          String
+  heading       String?
+  subheading    String?
+  description   String?
+  ctaText       String?
+  ctaUrl        String?
+  payload       Json?
+  imageAssetId  String?
+  imageAsset    MediaAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  isVisible     Boolean    @default(true)
+  sortOrder     Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model AboutSection {
+  id            String     @id @default(cuid())
+  title         String
+  body          String
+  imageAssetId  String?
+  imageAsset    MediaAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  isVisible     Boolean    @default(true)
+  sortOrder     Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model ServiceItem {
+  id            String     @id @default(cuid())
+  title         String
+  description   String
+  icon          String?
+  imageAssetId  String?
+  imageAsset    MediaAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  isVisible     Boolean    @default(true)
+  sortOrder     Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model TeamMember {
+  id            String     @id @default(cuid())
+  fullName      String
+  title         String
+  bio           String
+  profileUrl    String?
+  imageAssetId  String?
+  imageAsset    MediaAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  isVisible     Boolean    @default(true)
+  sortOrder     Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model HotelBrand {
+  id            String              @id @default(cuid())
+  name          String              @unique
+  logoAssetId   String?
+  logoAsset     MediaAsset?         @relation(fields: [logoAssetId], references: [id], onDelete: SetNull)
+  isActive      Boolean             @default(true)
+  sortOrder     Int                 @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  properties    PortfolioProperty[]
+}
+
+model PortfolioProperty {
+  id               String           @id @default(cuid())
+  brandId          String
+  brand            HotelBrand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  title            String
+  slug             String           @unique
+  shortDescription String
+  fullDescription  String?
+  status           PortfolioStatus
+  isVisible        Boolean          @default(true)
+  addressLine1     String
+  addressLine2     String?
+  city             String
+  state            String
+  zipCode          String
+  country          String           @default("USA")
+  keyInfo          Json?
+  coverImageAssetId String?
+  coverImageAsset  MediaAsset?      @relation("PropertyCoverImage", fields: [coverImageAssetId], references: [id], onDelete: SetNull)
+  sortOrder        Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  images           PropertyImage[]
+  viewEvents       ViewEvent[]
+}
+
+model PropertyImage {
+  id            String            @id @default(cuid())
+  propertyId    String
+  property      PortfolioProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  assetId       String
+  asset         MediaAsset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  altText       String?
+  sortOrder     Int               @default(0)
+  isCover       Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([propertyId, assetId])
+}
+
+model ContactInfo {
+  id                String   @id @default(cuid())
+  heading           String
+  introText         String
+  address           String
+  investmentEmail   String?
+  investmentPhone   String?
+  generalEmail      String
+  generalPhone      String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ContactMessage {
+  id          String               @id @default(cuid())
+  fullName    String
+  email       String
+  phone       String?
+  subject     String?
+  message     String
+  status      ContactMessageStatus @default(NEW)
+  adminNotes  String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model CareerApplication {
+  id                 String                  @id @default(cuid())
+  fullName           String
+  email              String
+  phone              String
+  city               String?
+  state              String?
+  position           String
+  experienceYears    Int?
+  coverLetter        String?
+  resumeOriginalName String
+  resumeStoredName   String
+  resumeMimeType     String
+  resumeSize         Int
+  resumeUrl          String
+  status             CareerApplicationStatus @default(NEW)
+  adminNotes         String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model SocialLink {
+  id           String   @id @default(cuid())
+  platform     String
+  url          String
+  iconKey      String?
+  isVisible    Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model LegalDocument {
+  id           String            @id @default(cuid())
+  type         LegalDocumentType @unique
+  title        String
+  content      String
+  updatedAt    DateTime          @updatedAt
+  createdAt    DateTime          @default(now())
+}
+
+model SiteSetting {
+  id             String     @id @default("main")
+  brandName      String
+  logoAssetId    String?
+  logoAsset      MediaAsset? @relation(fields: [logoAssetId], references: [id], onDelete: SetNull)
+  footerTagline  String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model ActivityLog {
+  id            String         @id @default(cuid())
+  adminId       String?
+  admin         Admin?         @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  adminFullName String
+  action        ActivityAction
+  entityType    String
+  entityId      String?
+  beforeJson    Json?
+  afterJson     Json?
+  createdAt     DateTime       @default(now())
+}
+
+model ViewEvent {
+  id                 String             @id @default(cuid())
+  sessionId          String
+  path               String
+  sectionKey         String?
+  portfolioPropertyId String?
+  portfolioProperty  PortfolioProperty? @relation(fields: [portfolioPropertyId], references: [id], onDelete: SetNull)
+  userAgentHash      String?
+  createdAt          DateTime           @default(now())
+
+  @@index([path, createdAt])
+  @@index([portfolioPropertyId, createdAt])
+}

@@ -39,11 +39,11 @@
 
 .nav-links {
   display: flex;
-  gap: 2.5rem;
+  gap: 1.5rem;
 }
 
 .nav-links a {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 500;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -52,8 +52,17 @@
   transition: color 0.3s ease;
 }
 
+.nav-links a.active {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
 .navbar.scrolled .nav-links a {
   color: var(--color-text-main); /* Text turns dark when glass background appears */
+}
+
+.navbar.scrolled .nav-links a.active {
+  color: #8b6b1f;
 }
 
 .nav-links a::after {
@@ -104,6 +113,10 @@
   /* Since the mobile dropdown has a white background, the links should always be dark */
   .nav-links a {
     color: var(--color-text-main) !important;
+  }
+
+  .nav-links a.active {
+    color: #8b6b1f !important;
   }
 
   .nav-links.active {
