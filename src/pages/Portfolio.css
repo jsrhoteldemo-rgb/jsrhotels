@@ -259,7 +259,20 @@
     padding: 0.82rem;
   }
 
+  .portfolio-chip-group {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .portfolio-chip-group::-webkit-scrollbar {
+    display: none;
+  }
+
   .portfolio-chip {
+    flex-shrink: 0;
     font-size: 0.8rem;
     padding: 0.42rem 0.68rem;
   }
