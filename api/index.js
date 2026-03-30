@@ -36,7 +36,15 @@ app.use(
 app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/health', (req, res) => res.json({
+  ok: true,
+  env: {
+    DATABASE_URL: !!process.env.DATABASE_URL,
+    DIRECT_URL: !!process.env.DIRECT_URL,
+    JWT_SECRET: !!process.env.JWT_SECRET,
+    CLIENT_ORIGIN: process.env.CLIENT_ORIGIN || 'not set',
+  }
+}));
 
 app.use('/api/public', publicRoutes);
 app.use('/api/admin/auth', authRoutes);
