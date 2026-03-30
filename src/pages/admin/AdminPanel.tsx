@@ -25,6 +25,7 @@ import { resolveAssetUrl } from '../../config/api';
 import { noImagePlaceholder } from '../../data/fallbackContent';
 import type {
   AboutSection,
+  ContentPageSection,
   HomeBlock,
   HotelBrand,
   PortfolioProperty,
@@ -40,6 +41,9 @@ type AdminTabKey =
   | 'admins'
   | 'home'
   | 'about'
+  | 'culture'
+  | 'development'
+  | 'awards'
   | 'services'
   | 'team'
   | 'brands'
@@ -183,19 +187,22 @@ interface PropertyFormState {
 
 const tabItems: Array<{ key: AdminTabKey; label: string; icon: typeof LayoutDashboard }> = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { key: 'admins', label: 'Admins', icon: ShieldCheck },
   { key: 'home', label: 'Home Blocks', icon: Home },
   { key: 'about', label: 'About', icon: FileText },
+  { key: 'culture', label: 'Culture', icon: FileText },
   { key: 'services', label: 'Services', icon: Wrench },
+  { key: 'development', label: 'Development', icon: Building2 },
+  { key: 'awards', label: 'Awards', icon: FileBadge },
   { key: 'team', label: 'Meet Our Team', icon: Users },
   { key: 'brands', label: 'Hotel Brands', icon: Building2 },
-  { key: 'properties', label: 'Properties', icon: GalleryVerticalEnd },
-  { key: 'social', label: 'Social Links', icon: Link2 },
+  { key: 'properties', label: 'Manage Portfolio', icon: GalleryVerticalEnd },
   { key: 'contactInfo', label: 'Contact Info', icon: Contact },
   { key: 'contactMessages', label: 'Contact Messages', icon: Inbox },
   { key: 'careers', label: 'Careers Inbox', icon: BriefcaseBusiness },
+  { key: 'social', label: 'Social Links', icon: Link2 },
   { key: 'legal', label: 'Legal', icon: FileBadge },
   { key: 'site', label: 'Site Settings', icon: Settings },
+  { key: 'admins', label: 'Admins', icon: ShieldCheck },
   { key: 'activity', label: 'Activity Logs', icon: Activity },
 ];
 
@@ -241,6 +248,81 @@ const careerStatusOptions: CareerApplicationStatus[] = [
   'SHORTLISTED',
   'REJECTED',
   'HIRED',
+];
+
+type HomeBlockSectionType =
+  | 'hero'
+  | 'pillars'
+  | 'intro'
+  | 'stats'
+  | 'featured'
+  | 'leadership'
+  | 'news'
+  | 'accolades'
+  | 'newsletter';
+
+interface HomeBlockSectionConfig {
+  type: HomeBlockSectionType;
+  label: string;
+  subtitle: string;
+  defaultSortOrder: number;
+}
+
+const homeBlockSectionConfigs: HomeBlockSectionConfig[] = [
+  {
+    type: 'hero',
+    label: 'Hero Section',
+    subtitle: 'Main banner content, call-to-action, and hero image.',
+    defaultSortOrder: 1,
+  },
+  {
+    type: 'pillars',
+    label: 'Core Pillars',
+    subtitle: 'Pillar cards with icon, title, and description items.',
+    defaultSortOrder: 2,
+  },
+  {
+    type: 'intro',
+    label: 'Intro Section',
+    subtitle: 'Welcome content block with optional CTA and image.',
+    defaultSortOrder: 3,
+  },
+  {
+    type: 'stats',
+    label: 'Stats Section',
+    subtitle: 'Key metrics (value + label pairs).',
+    defaultSortOrder: 4,
+  },
+  {
+    type: 'featured',
+    label: 'Featured Experience',
+    subtitle: 'Featured property block with highlights list and image.',
+    defaultSortOrder: 5,
+  },
+  {
+    type: 'leadership',
+    label: 'Leadership Quote',
+    subtitle: 'Leadership statement and profile image.',
+    defaultSortOrder: 6,
+  },
+  {
+    type: 'news',
+    label: 'News Feed',
+    subtitle: 'Latest updates cards with date, title, and description.',
+    defaultSortOrder: 7,
+  },
+  {
+    type: 'accolades',
+    label: 'Accolades',
+    subtitle: 'Awards and recognitions list.',
+    defaultSortOrder: 8,
+  },
+  {
+    type: 'newsletter',
+    label: 'Newsletter',
+    subtitle: 'Newsletter heading and supporting text.',
+    defaultSortOrder: 9,
+  },
 ];
 
 function prettyJson(input: unknown) {
@@ -468,6 +550,784 @@ function GenericListManager<T extends { id: string }>({
                 </button>
                 <button type="button" className="btn-danger" onClick={() => handleDelete(item.id)}>
                   Delete
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function getHomeBlockFormDefaults() {
+  return {
+    heading: '',
+    subheading: '',
+    description: '',
+    ctaText: '',
+    ctaUrl: '',
+    imageAssetId: '',
+    imageUrl: '',
+    isVisible: true,
+    pillarItems: [{ icon: 'Users', title: '', desc: '' }],
+    statItems: [{ value: '', label: '' }],
+    featureItems: [''],
+    newsItems: [{ date: '', title: '', desc: '' }],
+    accoladeItems: [{ title: '', desc: '' }],
+  } as Record<string, unknown>;
+}
+
+function asObject(value: unknown) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function asText(value: unknown) {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+function readObjectItems<T>(
+  value: unknown,
+  mapFn: (item: Record<string, unknown>) => T,
+  fallback: T[],
+) {
+  if (!Array.isArray(value)) return fallback;
+  const mapped = value
+    .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+    .map((item) => mapFn(item as Record<string, unknown>));
+  return mapped.length > 0 ? mapped : fallback;
+}
+
+function readStringItems(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value)) return fallback;
+  const mapped = value.map((item) => asText(item));
+  return mapped.length > 0 ? mapped : fallback;
+}
+
+function getHomeBlockFormFromItem(item: HomeBlock) {
+  const payload = asObject(item.payload);
+  return {
+    ...getHomeBlockFormDefaults(),
+    heading: item.heading || '',
+    subheading: item.subheading || '',
+    description: item.description || '',
+    ctaText: item.ctaText || '',
+    ctaUrl: item.ctaUrl || '',
+    imageAssetId: item.imageAssetId || '',
+    imageUrl: asText(payload.imageUrl),
+    isVisible: item.isVisible,
+    pillarItems: readObjectItems(
+      payload.items,
+      (row) => ({
+        icon: asText(row.icon),
+        title: asText(row.title),
+        desc: asText(row.desc),
+      }),
+      [{ icon: 'Users', title: '', desc: '' }],
+    ),
+    statItems: readObjectItems(
+      payload.items,
+      (row) => ({
+        value: asText(row.value),
+        label: asText(row.label),
+      }),
+      [{ value: '', label: '' }],
+    ),
+    featureItems: readStringItems(payload.features, ['']),
+    newsItems: readObjectItems(
+      payload.items,
+      (row) => ({
+        date: asText(row.date),
+        title: asText(row.title),
+        desc: asText(row.desc),
+      }),
+      [{ date: '', title: '', desc: '' }],
+    ),
+    accoladeItems: readObjectItems(
+      payload.items,
+      (row) => ({
+        title: asText(row.title),
+        desc: asText(row.desc),
+      }),
+      [{ title: '', desc: '' }],
+    ),
+  } as Record<string, unknown>;
+}
+
+function HomeBlockSectionManager({
+  config,
+  onFeedback,
+  uploadForField,
+}: {
+  config: HomeBlockSectionConfig;
+  onFeedback?: (type: 'success' | 'error', message: string) => void;
+  uploadForField: (
+    setter: Dispatch<SetStateAction<Record<string, unknown>>>,
+    field: string,
+    file: File | null,
+  ) => Promise<void>;
+}) {
+  const endpoint = '/api/admin/home-blocks';
+  const [items, setItems] = useState<HomeBlock[]>([]);
+  const [form, setForm] = useState<Record<string, unknown>>(() => getHomeBlockFormDefaults());
+  const [editId, setEditId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      setLoading(true);
+      const data = await apiRequest<HomeBlock[]>(endpoint);
+      const filtered = data
+        .filter((item) => item.type === config.type)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      setItems(filtered);
+      if (filtered.length === 0) {
+        setIsFormOpen(true);
+      }
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.type]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+
+    const clean = (value: unknown) => String(value || '').trim();
+    const imageUrl = clean(form.imageUrl);
+    const pillarItems = (Array.isArray(form.pillarItems) ? form.pillarItems : [])
+      .map((row) => asObject(row))
+      .map((row) => ({
+        icon: clean(row.icon),
+        title: clean(row.title),
+        desc: clean(row.desc),
+      }))
+      .filter((row) => row.title || row.desc || row.icon);
+    const statItems = (Array.isArray(form.statItems) ? form.statItems : [])
+      .map((row) => asObject(row))
+      .map((row) => ({
+        value: clean(row.value),
+        label: clean(row.label),
+      }))
+      .filter((row) => row.value || row.label);
+    const featureItems = (Array.isArray(form.featureItems) ? form.featureItems : [])
+      .map((item) => clean(item))
+      .filter(Boolean);
+    const newsItems = (Array.isArray(form.newsItems) ? form.newsItems : [])
+      .map((row) => asObject(row))
+      .map((row) => ({
+        date: clean(row.date),
+        title: clean(row.title),
+        desc: clean(row.desc),
+      }))
+      .filter((row) => row.date || row.title || row.desc);
+    const accoladeItems = (Array.isArray(form.accoladeItems) ? form.accoladeItems : [])
+      .map((row) => asObject(row))
+      .map((row) => ({
+        title: clean(row.title),
+        desc: clean(row.desc),
+      }))
+      .filter((row) => row.title || row.desc);
+
+    const payloadBody: Record<string, unknown> = {};
+
+    if (['hero', 'intro', 'featured', 'leadership'].includes(config.type) && imageUrl) {
+      payloadBody.imageUrl = imageUrl;
+    }
+
+    if (config.type === 'pillars') {
+      payloadBody.items = pillarItems;
+    }
+
+    if (config.type === 'stats') {
+      payloadBody.items = statItems;
+    }
+
+    if (config.type === 'featured') {
+      payloadBody.features = featureItems;
+    }
+
+    if (config.type === 'news') {
+      payloadBody.items = newsItems;
+    }
+
+    if (config.type === 'accolades') {
+      payloadBody.items = accoladeItems;
+    }
+
+    const lockedSortOrder = editId
+      ? items.find((item) => item.id === editId)?.sortOrder ?? config.defaultSortOrder
+      : config.defaultSortOrder;
+
+    const payload = {
+      type: config.type,
+      heading: clean(form.heading) || null,
+      subheading: clean(form.subheading) || null,
+      description: clean(form.description) || null,
+      ctaText: clean(form.ctaText) || null,
+      ctaUrl: clean(form.ctaUrl) || null,
+      payload: Object.keys(payloadBody).length > 0 ? payloadBody : null,
+      imageAssetId: clean(form.imageAssetId) || null,
+      sortOrder: lockedSortOrder,
+      isVisible: Boolean(form.isVisible),
+    };
+
+    try {
+      if (editId) {
+        await apiRequest(`${endpoint}/${editId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await apiRequest(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }
+
+      setForm(getHomeBlockFormDefaults());
+      setEditId(null);
+      setIsFormOpen(false);
+      onFeedback?.('success', `${config.label} ${editId ? 'updated' : 'added'} successfully.`);
+      await load();
+    } catch (err) {
+      const message = (err as Error).message;
+      setError(message);
+      onFeedback?.('error', message);
+    }
+  }
+
+  const showSubheading = ['pillars', 'intro', 'featured'].includes(config.type);
+  const showDescription = ['hero', 'intro', 'featured', 'leadership', 'newsletter'].includes(
+    config.type,
+  );
+  const showCta = ['hero', 'intro', 'featured'].includes(config.type);
+  const showImageFields = ['hero', 'intro', 'featured', 'leadership'].includes(config.type);
+  const showHeading = config.type !== 'stats';
+  const showPillars = config.type === 'pillars';
+  const showStats = config.type === 'stats';
+  const showFeatures = config.type === 'featured';
+  const showNews = config.type === 'news';
+  const showAccolades = config.type === 'accolades';
+
+  const pillarItems = Array.isArray(form.pillarItems)
+    ? (form.pillarItems as Array<Record<string, unknown>>)
+    : [];
+  const statItems = Array.isArray(form.statItems) ? (form.statItems as Array<Record<string, unknown>>) : [];
+  const featureItems = Array.isArray(form.featureItems) ? (form.featureItems as string[]) : [];
+  const newsItems = Array.isArray(form.newsItems) ? (form.newsItems as Array<Record<string, unknown>>) : [];
+  const accoladeItems = Array.isArray(form.accoladeItems)
+    ? (form.accoladeItems as Array<Record<string, unknown>>)
+    : [];
+
+  return (
+    <section className="admin-subsection admin-home-subsection">
+      <div className="admin-section-head">
+        <div>
+          <h3>{config.label}</h3>
+          <p>{config.subtitle}</p>
+        </div>
+      </div>
+
+      {error && <p className="admin-error">{error}</p>}
+
+      {isFormOpen && (
+        <form className="admin-form admin-form-panel" onSubmit={handleSubmit}>
+          {showHeading && (
+            <label>
+              <span>Heading</span>
+              <input
+                placeholder="Heading"
+                value={String(form.heading || '')}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, heading: e.target.value }))
+                }
+              />
+            </label>
+          )}
+
+          {showSubheading && (
+            <label>
+              <span>Subheading</span>
+              <input
+                placeholder="Subheading"
+                value={String(form.subheading || '')}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, subheading: e.target.value }))
+                }
+              />
+            </label>
+          )}
+
+          {showDescription && (
+            <label>
+              <span>{config.type === 'leadership' ? 'Author / Line' : 'Description'}</span>
+              <textarea
+                placeholder="Description"
+                value={String(form.description || '')}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, description: e.target.value }))
+                }
+              />
+            </label>
+          )}
+
+          {showCta && (
+            <div className="admin-form-grid two">
+              <label>
+                <span>CTA Text</span>
+                <input
+                  placeholder="Explore"
+                  value={String(form.ctaText || '')}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, ctaText: e.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                <span>CTA URL</span>
+                <input
+                  placeholder="/portfolio"
+                  value={String(form.ctaUrl || '')}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, ctaUrl: e.target.value }))
+                  }
+                />
+              </label>
+            </div>
+          )}
+
+          {showImageFields && (
+            <>
+              <div className="inline-group">
+                <label>
+                  <span>Image Asset ID</span>
+                  <input
+                    placeholder="Asset ID"
+                    value={String(form.imageAssetId || '')}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, imageAssetId: e.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Upload Image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) =>
+                      uploadForField(
+                        setForm,
+                        'imageAssetId',
+                        e.target.files?.[0] || null,
+                      )
+                    }
+                  />
+                </label>
+              </div>
+              <label>
+                <span>Fallback Image URL (optional)</span>
+                <input
+                  placeholder="/hero-bg.png"
+                  value={String(form.imageUrl || '')}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, imageUrl: e.target.value }))
+                  }
+                />
+              </label>
+            </>
+          )}
+
+          {showPillars && (
+            <div className="admin-repeater">
+              <div className="admin-repeater-head">
+                <span>Pillar Cards</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      pillarItems: [
+                        ...(Array.isArray(prev.pillarItems) ? prev.pillarItems : []),
+                        { icon: 'Users', title: '', desc: '' },
+                      ],
+                    }))
+                  }
+                >
+                  Add Pillar
+                </button>
+              </div>
+              {pillarItems.map((row, index) => (
+                <div key={`pillar-${index}`} className="admin-repeater-item">
+                  <div className="admin-repeater-item-head">
+                    <strong>Pillar {index + 1}</strong>
+                  </div>
+                  <div className="admin-form-grid two">
+                    <label>
+                      <span>Icon Key</span>
+                      <input
+                        placeholder="Users"
+                        value={asText(row.icon)}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            pillarItems: pillarItems.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, icon: e.target.value } : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Title</span>
+                      <input
+                        placeholder="Investment"
+                        value={asText(row.title)}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            pillarItems: pillarItems.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, title: e.target.value } : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    <span>Description</span>
+                    <textarea
+                      placeholder="Card description"
+                      value={asText(row.desc)}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          pillarItems: pillarItems.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, desc: e.target.value } : item,
+                          ),
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showStats && (
+            <div className="admin-repeater">
+              <div className="admin-repeater-head">
+                <span>Stat Items</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      statItems: [
+                        ...(Array.isArray(prev.statItems) ? prev.statItems : []),
+                        { value: '', label: '' },
+                      ],
+                    }))
+                  }
+                >
+                  Add Stat
+                </button>
+              </div>
+              {statItems.map((row, index) => (
+                <div key={`stat-${index}`} className="admin-repeater-item">
+                  <div className="admin-repeater-item-head">
+                    <strong>Stat {index + 1}</strong>
+                  </div>
+                  <div className="admin-form-grid two">
+                    <label>
+                      <span>Value</span>
+                      <input
+                        placeholder="12"
+                        value={asText(row.value)}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            statItems: statItems.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, value: e.target.value } : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Label</span>
+                      <input
+                        placeholder="Hotels"
+                        value={asText(row.label)}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            statItems: statItems.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, label: e.target.value } : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showFeatures && (
+            <div className="admin-repeater">
+              <div className="admin-repeater-head">
+                <span>Feature List</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      featureItems: [...(Array.isArray(prev.featureItems) ? prev.featureItems : []), ''],
+                    }))
+                  }
+                >
+                  Add Feature
+                </button>
+              </div>
+              {featureItems.map((feature, index) => (
+                <div key={`feature-${index}`} className="admin-repeater-item">
+                  <div className="admin-repeater-item-head">
+                    <strong>Feature {index + 1}</strong>
+                  </div>
+                  <label>
+                    <span>Feature Text</span>
+                    <input
+                      placeholder="Panoramic City Views"
+                      value={feature}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          featureItems: featureItems.map((item, itemIndex) =>
+                            itemIndex === index ? e.target.value : item,
+                          ),
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showNews && (
+            <div className="admin-repeater">
+              <div className="admin-repeater-head">
+                <span>News Items</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      newsItems: [
+                        ...(Array.isArray(prev.newsItems) ? prev.newsItems : []),
+                        { date: '', title: '', desc: '' },
+                      ],
+                    }))
+                  }
+                >
+                  Add News
+                </button>
+              </div>
+              {newsItems.map((row, index) => (
+                <div key={`news-${index}`} className="admin-repeater-item">
+                  <div className="admin-repeater-item-head">
+                    <strong>News {index + 1}</strong>
+                  </div>
+                  <div className="admin-form-grid two">
+                    <label>
+                      <span>Date</span>
+                      <input
+                        placeholder="Oct 24, 2026"
+                        value={asText(row.date)}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            newsItems: newsItems.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, date: e.target.value } : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Title</span>
+                      <input
+                        placeholder="News title"
+                        value={asText(row.title)}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            newsItems: newsItems.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, title: e.target.value } : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    <span>Description</span>
+                    <textarea
+                      placeholder="News summary"
+                      value={asText(row.desc)}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          newsItems: newsItems.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, desc: e.target.value } : item,
+                          ),
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showAccolades && (
+            <div className="admin-repeater">
+              <div className="admin-repeater-head">
+                <span>Accolade Items</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      accoladeItems: [
+                        ...(Array.isArray(prev.accoladeItems) ? prev.accoladeItems : []),
+                        { title: '', desc: '' },
+                      ],
+                    }))
+                  }
+                >
+                  Add Accolade
+                </button>
+              </div>
+              {accoladeItems.map((row, index) => (
+                <div key={`accolade-${index}`} className="admin-repeater-item">
+                  <div className="admin-repeater-item-head">
+                    <strong>Accolade {index + 1}</strong>
+                  </div>
+                  <div className="admin-form-grid two">
+                    <label>
+                      <span>Title</span>
+                      <input
+                        placeholder="Award title"
+                        value={asText(row.title)}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            accoladeItems: accoladeItems.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, title: e.target.value } : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Description</span>
+                      <input
+                        placeholder="Award details"
+                        value={asText(row.desc)}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            accoladeItems: accoladeItems.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, desc: e.target.value } : item,
+                            ),
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="inline-group">
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={Boolean(form.isVisible)}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, isVisible: e.target.checked }))
+                }
+              />
+              <span>Visible</span>
+            </label>
+          </div>
+          <div className="admin-form-actions">
+            <button type="submit" className="btn-primary">
+              {editId ? 'Update' : 'Create'}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setEditId(null);
+                setForm(getHomeBlockFormDefaults());
+                setIsFormOpen(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <p className="admin-empty">Loading...</p>
+      ) : items.length === 0 ? (
+        <p className="admin-empty">No items yet for this section.</p>
+      ) : (
+        <div className="admin-list">
+          {items.map((item) => (
+            <article key={item.id} className="admin-list-item">
+              <div className="admin-item-main">
+                <h3>{item.heading || config.label}</h3>
+                <p className="admin-item-meta">
+                  {item.isVisible ? 'Visible' : 'Hidden'}
+                </p>
+              </div>
+              <div className="admin-item-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setEditId(item.id);
+                    setForm(getHomeBlockFormFromItem(item));
+                    setIsFormOpen(true);
+                  }}
+                >
+                  Edit
                 </button>
               </div>
             </article>
@@ -1350,7 +2210,7 @@ const AdminPanel = () => {
             </div>
           </header>
 
-          <div className="admin-main-content">
+          <div className={`admin-main-content ${tab === 'activity' ? 'activity-view' : ''}`}>
             {tab === 'dashboard' && (
               <section className="admin-section">
                 <div className="admin-section-head split">
@@ -1515,168 +2375,26 @@ const AdminPanel = () => {
             )}
 
             {tab === 'home' && (
-              <GenericListManager<HomeBlock>
-                title="Homepage Blocks"
-                subtitle="Create and reorder homepage sections with image uploads."
-                entityLabel="Home block"
-                onFeedback={(type, message) => pushNotice(type, message)}
-                endpoint="/api/admin/home-blocks"
-                defaults={{
-                  type: 'hero',
-                  heading: '',
-                  subheading: '',
-                  description: '',
-                  ctaText: '',
-                  ctaUrl: '',
-                  payloadText: '{}',
-                  imageAssetId: '',
-                  isVisible: true,
-                  sortOrder: 0,
-                }}
-                renderFields={(form, setForm) => (
-                  <>
-                    <label>
-                      <span>Block Type</span>
-                      <input
-                        placeholder="hero, highlights, etc."
-                        value={String(form.type || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, type: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Heading</span>
-                      <input
-                        placeholder="Heading"
-                        value={String(form.heading || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, heading: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Subheading</span>
-                      <input
-                        placeholder="Subheading"
-                        value={String(form.subheading || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, subheading: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Description</span>
-                      <textarea
-                        placeholder="Description"
-                        value={String(form.description || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, description: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>CTA Text</span>
-                      <input
-                        placeholder="Explore"
-                        value={String(form.ctaText || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, ctaText: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>CTA URL</span>
-                      <input
-                        placeholder="/portfolio"
-                        value={String(form.ctaUrl || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, ctaUrl: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Payload JSON</span>
-                      <textarea
-                        placeholder='{"example":true}'
-                        value={String(form.payloadText || prettyJson(form.payload || {}))}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, payloadText: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <div className="inline-group">
-                      <label>
-                        <span>Image Asset ID</span>
-                        <input
-                          placeholder="Asset ID"
-                          value={String(form.imageAssetId || '')}
-                          onChange={(e) =>
-                            setForm((prev) => ({ ...prev, imageAssetId: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Upload Image</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={async (e) =>
-                            uploadForField(
-                              setForm,
-                              'imageAssetId',
-                              e.target.files?.[0] || null,
-                            )
-                          }
-                        />
-                      </label>
-                    </div>
-                    <div className="inline-group">
-                      <label>
-                        <span>Sort Order</span>
-                        <input
-                          type="number"
-                          value={Number(form.sortOrder || 0)}
-                          onChange={(e) =>
-                            setForm((prev) => ({ ...prev, sortOrder: Number(e.target.value) }))
-                          }
-                        />
-                      </label>
-                      <label className="toggle-label">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(form.isVisible)}
-                          onChange={(e) =>
-                            setForm((prev) => ({ ...prev, isVisible: e.target.checked }))
-                          }
-                        />
-                        <span>Visible</span>
-                      </label>
-                    </div>
-                  </>
-                )}
-                toPayload={(form) => ({
-                  type: form.type,
-                  heading: form.heading || null,
-                  subheading: form.subheading || null,
-                  description: form.description || null,
-                  ctaText: form.ctaText || null,
-                  ctaUrl: form.ctaUrl || null,
-                  payload: JSON.parse(String(form.payloadText || '{}')),
-                  imageAssetId: form.imageAssetId || null,
-                  sortOrder: Number(form.sortOrder || 0),
-                  isVisible: Boolean(form.isVisible),
-                })}
-                summary={(item) => (
-                  <>
-                    <h3>{item.heading || item.type}</h3>
-                    <p className="admin-item-meta">
-                      Type: {item.type} | Sort: {item.sortOrder} |{' '}
-                      {item.isVisible ? 'Visible' : 'Hidden'}
-                    </p>
-                  </>
-                )}
-              />
+              <section className="admin-section">
+                <div className="admin-section-head">
+                  <h2>Homepage Blocks</h2>
+                  <p>
+                    Dedicated CRUD manager for each homepage section. Each panel only handles one
+                    section type.
+                  </p>
+                </div>
+
+                <div className="admin-home-sections">
+                  {homeBlockSectionConfigs.map((config) => (
+                    <HomeBlockSectionManager
+                      key={config.type}
+                      config={config}
+                      onFeedback={(type, message) => pushNotice(type, message)}
+                      uploadForField={uploadForField}
+                    />
+                  ))}
+                </div>
+              </section>
             )}
 
             {tab === 'about' && (
@@ -1884,6 +2602,348 @@ const AdminPanel = () => {
                   <>
                     <h3>{item.title}</h3>
                     <p className="admin-item-meta">{item.description}</p>
+                  </>
+                )}
+              />
+            )}
+
+            {tab === 'culture' && (
+              <GenericListManager<ContentPageSection>
+                title="Culture Sections"
+                subtitle="Manage dynamic sections for the Culture page."
+                entityLabel="Culture section"
+                onFeedback={(type, message) => pushNotice(type, message)}
+                endpoint="/api/admin/culture-sections"
+                defaults={{
+                  title: '',
+                  body: '',
+                  icon: '',
+                  imageAssetId: '',
+                  sortOrder: 0,
+                  isVisible: true,
+                }}
+                renderFields={(form, setForm) => (
+                  <>
+                    <label>
+                      <span>Title</span>
+                      <input
+                        placeholder="Section title"
+                        value={String(form.title || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, title: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Description</span>
+                      <textarea
+                        placeholder="Section description"
+                        value={String(form.body || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, body: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Icon (optional)</span>
+                      <input
+                        placeholder="e.g. 🌿"
+                        value={String(form.icon || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, icon: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <div className="inline-group">
+                      <label>
+                        <span>Image Asset ID</span>
+                        <input
+                          placeholder="Asset ID"
+                          value={String(form.imageAssetId || '')}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, imageAssetId: e.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) =>
+                            uploadForField(
+                              setForm,
+                              'imageAssetId',
+                              e.target.files?.[0] || null,
+                            )
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="inline-group">
+                      <label>
+                        <span>Sort Order</span>
+                        <input
+                          type="number"
+                          value={Number(form.sortOrder || 0)}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, sortOrder: Number(e.target.value) }))
+                          }
+                        />
+                      </label>
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.isVisible)}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, isVisible: e.target.checked }))
+                          }
+                        />
+                        <span>Visible</span>
+                      </label>
+                    </div>
+                  </>
+                )}
+                toPayload={(form) => ({
+                  title: form.title,
+                  body: form.body,
+                  icon: form.icon || null,
+                  imageAssetId: form.imageAssetId || null,
+                  sortOrder: Number(form.sortOrder || 0),
+                  isVisible: Boolean(form.isVisible),
+                })}
+                summary={(item) => (
+                  <>
+                    <h3>{item.title}</h3>
+                    <p className="admin-item-meta">{item.body.slice(0, 160)}...</p>
+                  </>
+                )}
+              />
+            )}
+
+            {tab === 'development' && (
+              <GenericListManager<ContentPageSection>
+                title="Development Sections"
+                subtitle="Manage dynamic sections for the Development page."
+                entityLabel="Development section"
+                onFeedback={(type, message) => pushNotice(type, message)}
+                endpoint="/api/admin/development-sections"
+                defaults={{
+                  title: '',
+                  body: '',
+                  icon: '',
+                  imageAssetId: '',
+                  sortOrder: 0,
+                  isVisible: true,
+                }}
+                renderFields={(form, setForm) => (
+                  <>
+                    <label>
+                      <span>Title</span>
+                      <input
+                        placeholder="Section title"
+                        value={String(form.title || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, title: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Description</span>
+                      <textarea
+                        placeholder="Section description"
+                        value={String(form.body || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, body: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Icon (optional)</span>
+                      <input
+                        placeholder="e.g. 🏗️"
+                        value={String(form.icon || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, icon: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <div className="inline-group">
+                      <label>
+                        <span>Image Asset ID</span>
+                        <input
+                          placeholder="Asset ID"
+                          value={String(form.imageAssetId || '')}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, imageAssetId: e.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) =>
+                            uploadForField(
+                              setForm,
+                              'imageAssetId',
+                              e.target.files?.[0] || null,
+                            )
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="inline-group">
+                      <label>
+                        <span>Sort Order</span>
+                        <input
+                          type="number"
+                          value={Number(form.sortOrder || 0)}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, sortOrder: Number(e.target.value) }))
+                          }
+                        />
+                      </label>
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.isVisible)}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, isVisible: e.target.checked }))
+                          }
+                        />
+                        <span>Visible</span>
+                      </label>
+                    </div>
+                  </>
+                )}
+                toPayload={(form) => ({
+                  title: form.title,
+                  body: form.body,
+                  icon: form.icon || null,
+                  imageAssetId: form.imageAssetId || null,
+                  sortOrder: Number(form.sortOrder || 0),
+                  isVisible: Boolean(form.isVisible),
+                })}
+                summary={(item) => (
+                  <>
+                    <h3>{item.title}</h3>
+                    <p className="admin-item-meta">{item.body.slice(0, 160)}...</p>
+                  </>
+                )}
+              />
+            )}
+
+            {tab === 'awards' && (
+              <GenericListManager<ContentPageSection>
+                title="Awards Sections"
+                subtitle="Manage dynamic sections for the Awards page."
+                entityLabel="Award section"
+                onFeedback={(type, message) => pushNotice(type, message)}
+                endpoint="/api/admin/award-sections"
+                defaults={{
+                  title: '',
+                  body: '',
+                  icon: '',
+                  imageAssetId: '',
+                  sortOrder: 0,
+                  isVisible: true,
+                }}
+                renderFields={(form, setForm) => (
+                  <>
+                    <label>
+                      <span>Title</span>
+                      <input
+                        placeholder="Section title"
+                        value={String(form.title || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, title: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Description</span>
+                      <textarea
+                        placeholder="Section description"
+                        value={String(form.body || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, body: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Icon (optional)</span>
+                      <input
+                        placeholder="e.g. 🏆"
+                        value={String(form.icon || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, icon: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <div className="inline-group">
+                      <label>
+                        <span>Image Asset ID</span>
+                        <input
+                          placeholder="Asset ID"
+                          value={String(form.imageAssetId || '')}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, imageAssetId: e.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) =>
+                            uploadForField(
+                              setForm,
+                              'imageAssetId',
+                              e.target.files?.[0] || null,
+                            )
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="inline-group">
+                      <label>
+                        <span>Sort Order</span>
+                        <input
+                          type="number"
+                          value={Number(form.sortOrder || 0)}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, sortOrder: Number(e.target.value) }))
+                          }
+                        />
+                      </label>
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.isVisible)}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, isVisible: e.target.checked }))
+                          }
+                        />
+                        <span>Visible</span>
+                      </label>
+                    </div>
+                  </>
+                )}
+                toPayload={(form) => ({
+                  title: form.title,
+                  body: form.body,
+                  icon: form.icon || null,
+                  imageAssetId: form.imageAssetId || null,
+                  sortOrder: Number(form.sortOrder || 0),
+                  isVisible: Boolean(form.isVisible),
+                })}
+                summary={(item) => (
+                  <>
+                    <h3>{item.title}</h3>
+                    <p className="admin-item-meta">{item.body.slice(0, 160)}...</p>
                   </>
                 )}
               />
@@ -3107,7 +4167,7 @@ const AdminPanel = () => {
             )}
 
             {tab === 'activity' && (
-              <section className="admin-section">
+              <section className="admin-section admin-activity-section">
                 <div className="admin-section-head split">
                   <div>
                     <h2>Activity Logs</h2>
@@ -3148,7 +4208,7 @@ const AdminPanel = () => {
                 {activityLogs.length === 0 ? (
                   <p className="admin-empty">No activity found for selected filters.</p>
                 ) : (
-                  <div className="admin-list admin-scroll-list">
+                  <div className="admin-scroll-list">
                     {activityLogs.map((log) => (
                       <article key={log.id} className="admin-list-item admin-activity-item">
                         <div className="admin-item-main">
