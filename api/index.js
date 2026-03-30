@@ -1,9 +1,8 @@
-// api/index.js  – Vercel Serverless Function entry point
-// This file re-exports the Express app so Vercel can run it as a serverless function.
+// api/index.js – Vercel Serverless Function entry point
+// Wraps the entire Express app as a single serverless function.
 
 import express from 'express';
 import cors from 'cors';
-import { createRequire } from 'node:module';
 import { requireAuth } from '../server/src/middleware/auth.js';
 import { errorHandler, notFoundHandler } from '../server/src/middleware/errorHandler.js';
 import authRoutes from '../server/src/routes/authRoutes.js';
