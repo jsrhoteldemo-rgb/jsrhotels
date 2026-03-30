@@ -28,6 +28,11 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close the menu whenever the route changes (covers all navigation methods)
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
   const logoSrc = siteSetting.logoAsset?.url ? resolveAssetUrl(siteSetting.logoAsset.url) : '/logo.jpg';
 
   return (
@@ -45,33 +50,15 @@ const Navbar = () => {
         </Link>
 
         <nav className={`nav-links ${mobileMenuOpen ? 'active' : ''}`}>
-          <NavLink to="/" onClick={() => setMobileMenuOpen(false)}>
-            Home
-          </NavLink>
-          <NavLink to="/about" onClick={() => setMobileMenuOpen(false)}>
-            Our Story
-          </NavLink>
-          <NavLink to="/services" onClick={() => setMobileMenuOpen(false)}>
-            Capabilities
-          </NavLink>
-          <NavLink to="/development" onClick={() => setMobileMenuOpen(false)}>
-            Development
-          </NavLink>
-          <NavLink to="/portfolio" onClick={() => setMobileMenuOpen(false)}>
-            Portfolio
-          </NavLink>
-          <NavLink to="/awards" onClick={() => setMobileMenuOpen(false)}>
-            Awards
-          </NavLink>
-          <NavLink to="/culture" onClick={() => setMobileMenuOpen(false)}>
-            Culture
-          </NavLink>
-          <NavLink to="/team" onClick={() => setMobileMenuOpen(false)}>
-            Team
-          </NavLink>
-          <NavLink to="/contact" onClick={() => setMobileMenuOpen(false)}>
-            Contact
-          </NavLink>
+          <NavLink to="/" end>Home</NavLink>
+          <NavLink to="/about">Our Story</NavLink>
+          <NavLink to="/services">Capabilities</NavLink>
+          <NavLink to="/development">Development</NavLink>
+          <NavLink to="/portfolio">Portfolio</NavLink>
+          <NavLink to="/awards">Awards</NavLink>
+          <NavLink to="/culture">Culture</NavLink>
+          <NavLink to="/team">Team</NavLink>
+          <NavLink to="/contact">Contact</NavLink>
         </nav>
 
         <button
