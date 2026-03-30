@@ -17,10 +17,12 @@ import {
   LayoutDashboard,
   Link2,
   LogOut,
+  Menu,
   Settings,
   ShieldCheck,
   Users,
   Wrench,
+  X,
 } from 'lucide-react';
 import { apiRequest, getAdminToken, setAdminToken, uploadFile } from '../../api/http';
 import { resolveAssetUrl } from '../../config/api';
@@ -1408,6 +1410,7 @@ const AdminPanel = () => {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [tab, setTab] = useState<AdminTabKey>('dashboard');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toast, setToast] = useState<AdminNotice | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
@@ -2208,7 +2211,16 @@ const AdminPanel = () => {
         )}
       </div>
       <div className="admin-shell">
-        <aside className="admin-sidebar">
+        {/* ── Mobile nav overlay ── */}
+        {mobileNavOpen && (
+          <div
+            className="admin-mobile-overlay"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        <aside className={`admin-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
           <div className="admin-brand-block">
             <img
               src={siteForm.logoPreviewUrl || '/logo.jpg'}
@@ -2232,7 +2244,10 @@ const AdminPanel = () => {
                 <button
                   key={item.key}
                   className={`admin-tab-button ${isActive ? 'active' : ''}`}
-                  onClick={() => setTab(item.key)}
+                  onClick={() => {
+                    setTab(item.key);
+                    setMobileNavOpen(false);
+                  }}
                 >
                   <Icon size={16} />
                   <span>{item.label}</span>
@@ -2257,12 +2272,23 @@ const AdminPanel = () => {
 
         <main className="admin-main">
           <header className="admin-main-header">
-            <div>
-              <p className="admin-eyebrow">Control Panel</p>
-              <h2>
-                <ActiveIcon size={18} />
-                {activeTab.label}
-              </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              {/* Hamburger — mobile only */}
+              <button
+                className="admin-hamburger"
+                aria-label="Open navigation"
+                aria-expanded={mobileNavOpen}
+                onClick={() => setMobileNavOpen((prev) => !prev)}
+              >
+                {mobileNavOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
+              <div>
+                <p className="admin-eyebrow">Control Panel</p>
+                <h2>
+                  <ActiveIcon size={18} />
+                  {activeTab.label}
+                </h2>
+              </div>
             </div>
             <div className="admin-header-tags">
               <span className="admin-badge">Live CMS</span>

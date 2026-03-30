@@ -1,12 +1,23 @@
 // In production (Vercel), the API is on the same domain — use relative paths.
-// In local dev, VITE_API_BASE_URL points to the Express server (http://localhost:4000).
-// Guard: if the bundle was built with a localhost URL but is running on a real domain, ignore it.
-const rawBase = import.meta.env.VITE_API_BASE_URL || '';
-const isRunningOnRealHost =
-  typeof window !== 'undefined' && !window.location.hostname.includes('localhost');
-const isLocalhostUrl = rawBase.includes('localhost') || rawBase.includes('127.0.0.1');
+// In local dev, default to local API when VITE_API_BASE_URL is not set.
+// Guard: if a production build was pointed at localhost, ignore that at runtime.
+const rawBase = String(import.meta.env.VITE_API_BASE_URL || '').trim();
+const isDev = Boolean(import.meta.env.DEV);
+const isBrowser = typeof window !== 'undefined';
+const host = isBrowser ? window.location.hostname : '';
+const isRunningOnLocalhost = /^(localhost|127\.0\.0\.1|::1)$/.test(host);
+const isLocalhostUrl = /^https?:\/\/(localhost|127\.0\.0\.1|::1)(:\d+)?$/i.test(rawBase);
 
-export const API_BASE_URL = isRunningOnRealHost && isLocalhostUrl ? '' : rawBase;
+const normalizedBase = rawBase.replace(/\/+$/, '');
+
+export const API_BASE_URL =
+  normalizedBase
+    ? isBrowser && !isRunningOnLocalhost && isLocalhostUrl
+      ? ''
+      : normalizedBase
+    : isDev
+      ? 'http://localhost:4000'
+      : '';
 
 export function resolveAssetUrl(url?: string | null) {
   if (!url) return '';

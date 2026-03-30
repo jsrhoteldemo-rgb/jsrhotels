@@ -15,10 +15,34 @@ export function setAdminToken(token: string | null) {
   localStorage.setItem(ADMIN_TOKEN_KEY, token);
 }
 
+async function parseJsonPayload<T>(response: Response): Promise<T> {
+  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+
+  if (!contentType.includes('application/json')) {
+    const text = await response.text().catch(() => '');
+    const snippet = text.slice(0, 140).trim();
+    throw new Error(
+      `API returned non-JSON response. Check API URL/deployment.${snippet ? ` Received: ${snippet}` : ''}`,
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
+
+function buildApiUrl(path: string) {
+  return `${API_BASE_URL}${path}`;
+}
+
+export type MediaAssetUploadResponse = {
+  id: string;
+  url: string;
+  [key: string]: unknown;
+};
+
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getAdminToken();
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -28,11 +52,11 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   });
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || `Request failed with status ${response.status}`);
+    const payload = await parseJsonPayload<{ message?: string }>(response).catch(() => null);
+    throw new Error(payload?.message || `Request failed with status ${response.status}`);
   }
 
-  return response.json() as Promise<T>;
+  return parseJsonPayload<T>(response);
 }
 
 export async function apiRequestFormData<T>(path: string, formData: FormData, options: RequestInit = {}): Promise<T> {
@@ -43,26 +67,26 @@ export async function apiRequestFormData<T>(path: string, formData: FormData, op
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     ...options,
     body: formData,
     headers,
   });
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || `Request failed with status ${response.status}`);
+    const payload = await parseJsonPayload<{ message?: string }>(response).catch(() => null);
+    throw new Error(payload?.message || `Request failed with status ${response.status}`);
   }
 
-  return response.json() as Promise<T>;
+  return parseJsonPayload<T>(response);
 }
 
-export async function uploadFile(file: File) {
+export async function uploadFile(file: File): Promise<MediaAssetUploadResponse> {
   const token = getAdminToken();
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/api/admin/uploads`, {
+  const response = await fetch(buildApiUrl('/api/admin/uploads'), {
     method: 'POST',
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -71,9 +95,9 @@ export async function uploadFile(file: File) {
   });
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || 'Upload failed');
+    const payload = await parseJsonPayload<{ message?: string }>(response).catch(() => null);
+    throw new Error(payload?.message || 'Upload failed');
   }
 
-  return response.json();
+  return parseJsonPayload<MediaAssetUploadResponse>(response);
 }

@@ -20,12 +20,21 @@ const configuredOrigins = new Set(
     .filter(Boolean),
 );
 
+function isLocalDevOrigin(origin) {
+  try {
+    const parsed = new URL(origin);
+    return ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     credentials: true,
     origin(origin, callback) {
       if (!origin) { callback(null, true); return; }
-      if (configuredOrigins.has(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+      if (configuredOrigins.has(origin) || isLocalDevOrigin(origin)) {
         callback(null, true); return;
       }
       callback(new Error(`Origin ${origin} not allowed`));

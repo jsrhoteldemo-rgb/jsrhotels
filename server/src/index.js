@@ -18,6 +18,15 @@ const configuredOrigins = new Set(
     .filter(Boolean),
 );
 
+function isLocalDevOrigin(origin) {
+  try {
+    const parsed = new URL(origin);
+    return ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     credentials: true,
@@ -28,8 +37,8 @@ app.use(
         return;
       }
 
-      // Allow configured origins and localhost dev ports.
-      if (configuredOrigins.has(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+      // Allow configured origins and local development origins.
+      if (configuredOrigins.has(origin) || isLocalDevOrigin(origin)) {
         callback(null, true);
         return;
       }
