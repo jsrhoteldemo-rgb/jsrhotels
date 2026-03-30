@@ -4,6 +4,7 @@ import { fallbackDevelopmentSections } from '../data/fallbackContent';
 import { usePublicData } from '../hooks/usePublicData';
 import { useViewTracker } from '../hooks/useViewTracker';
 import type { ContentPageSection } from '../types/content';
+import './Development.css';
 
 const Development = () => {
   const { data: sections } = usePublicData<ContentPageSection[]>({
@@ -32,12 +33,11 @@ const Development = () => {
           </p>
         </motion.div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '3rem', marginTop: '2rem' }}>
+        <div className="development-grid">
           {visibleSections.map((section, index) => (
             <motion.div
               key={section.id}
-              className="glass-effect"
-              style={{ padding: '3rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+              className="development-card glass-effect"
               initial={{ opacity: 0, x: index % 2 === 0 ? -30 : 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -45,15 +45,15 @@ const Development = () => {
             >
               {section.imageAsset?.url ? (
                 <img
+                  className="development-card-image"
                   src={resolveAssetUrl(section.imageAsset.url)}
                   alt={section.title}
-                  style={{ width: '100%', height: '260px', objectFit: 'cover', borderRadius: '6px', marginBottom: '1rem' }}
                 />
               ) : section.icon ? (
-                <div style={{ fontSize: '2rem', marginBottom: '0.8rem' }}>{section.icon}</div>
+                <div className="development-card-icon">{section.icon}</div>
               ) : null}
-              <h3 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: 'var(--color-text-main)' }}>{section.title}</h3>
-              <p style={{ color: 'var(--color-text-muted)', lineHeight: 1.8, fontSize: '1.05rem' }}>{section.body}</p>
+              <h3>{section.title}</h3>
+              <p>{section.body}</p>
             </motion.div>
           ))}
         </div>
