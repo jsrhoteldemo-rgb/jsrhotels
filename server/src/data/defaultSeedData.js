@@ -163,6 +163,78 @@ export const defaultTeamMembers = [
   },
 ];
 
+export const defaultCultureSections = [
+  {
+    title: 'Excellence',
+    body: 'We never settle for average. From meticulously curated details to proactive service, true luxury is built on continuous improvement and setting new benchmarks.',
+    icon: '✨',
+    sortOrder: 1,
+    isVisible: true,
+  },
+  {
+    title: 'Integrity',
+    body: 'Transparency and trust are the cornerstones of our philosophy. We build long-term value through responsibility and clear communication with guests and partners.',
+    icon: '🤝',
+    sortOrder: 2,
+    isVisible: true,
+  },
+  {
+    title: 'Guest-Centricity',
+    body: 'Every decision is shaped by guest experience. We empower teams to anticipate needs and create memorable stays that inspire loyalty.',
+    icon: '💎',
+    sortOrder: 3,
+    isVisible: true,
+  },
+];
+
+export const defaultDevelopmentSections = [
+  {
+    title: 'Vision & Site Selection',
+    body: 'Our development journey starts with high-potential locations. We combine market research, accessibility studies, and long-term value planning to build landmark destinations.',
+    icon: '📍',
+    sortOrder: 1,
+    isVisible: true,
+  },
+  {
+    title: 'Architectural Excellence',
+    body: 'We collaborate with top architects to design bold spaces that balance modern aesthetics with timeless functionality and local context.',
+    icon: '🏛️',
+    sortOrder: 2,
+    isVisible: true,
+  },
+  {
+    title: 'Construction & Integration',
+    body: 'We execute construction with premium materials and sustainable methods, integrating smart-hotel systems for seamless operations from day one.',
+    icon: '🏗️',
+    sortOrder: 3,
+    isVisible: true,
+  },
+];
+
+export const defaultAwardSections = [
+  {
+    title: '2025 Best of The Best Award',
+    body: 'Awarded for top-tier guest satisfaction and flawless operational excellence across flagship properties.',
+    icon: '🏆',
+    sortOrder: 1,
+    isVisible: true,
+  },
+  {
+    title: 'Global Hospitality Platinum',
+    body: 'Recognizing JSR Hotels among the top global brands for luxury guest experiences and service consistency.',
+    icon: '🌟',
+    sortOrder: 2,
+    isVisible: true,
+  },
+  {
+    title: 'Excellence in Architecture',
+    body: 'Honoring design leadership, sustainable construction practices, and standout interior concepts.',
+    icon: '🏅',
+    sortOrder: 3,
+    isVisible: true,
+  },
+];
+
 export const defaultBrands = ['Hilton', 'Marriott', 'Holiday Inn', 'Hyatt', 'Wyndham', 'Accor'];
 
 export const defaultContactInfo = {

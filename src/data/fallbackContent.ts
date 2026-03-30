@@ -1,5 +1,6 @@
 import type {
   AboutSection,
+  ContentPageSection,
   ContactInfo,
   HomeBlock,
   LegalDocument,
@@ -161,6 +162,96 @@ export const fallbackAboutSections: AboutSection[] = [
     imageAsset: null,
     isVisible: true,
     sortOrder: 1,
+  },
+];
+
+export const fallbackCultureSections: ContentPageSection[] = [
+  {
+    id: 'culture-1',
+    pageKey: 'CULTURE',
+    title: 'Excellence',
+    body: 'We never settle for average. We constantly refine service standards to deliver premium hospitality in every interaction.',
+    icon: '✨',
+    isVisible: true,
+    sortOrder: 1,
+  },
+  {
+    id: 'culture-2',
+    pageKey: 'CULTURE',
+    title: 'Integrity',
+    body: 'Transparency and trust guide every decision, building long-term value for guests, teams, and partners.',
+    icon: '🤝',
+    isVisible: true,
+    sortOrder: 2,
+  },
+  {
+    id: 'culture-3',
+    pageKey: 'CULTURE',
+    title: 'Guest-Centricity',
+    body: 'Every operational step is shaped by guest experience and personalized service.',
+    icon: '💎',
+    isVisible: true,
+    sortOrder: 3,
+  },
+];
+
+export const fallbackDevelopmentSections: ContentPageSection[] = [
+  {
+    id: 'dev-1',
+    pageKey: 'DEVELOPMENT',
+    title: 'Vision & Site Selection',
+    body: 'We identify high-potential locations through market insights, accessibility studies, and long-term asset strategy.',
+    icon: '📍',
+    isVisible: true,
+    sortOrder: 1,
+  },
+  {
+    id: 'dev-2',
+    pageKey: 'DEVELOPMENT',
+    title: 'Architectural Excellence',
+    body: 'We design bold, timeless properties with top architects while balancing operational efficiency and guest comfort.',
+    icon: '🏛️',
+    isVisible: true,
+    sortOrder: 2,
+  },
+  {
+    id: 'dev-3',
+    pageKey: 'DEVELOPMENT',
+    title: 'Construction & Integration',
+    body: 'Premium execution, sustainable materials, and smart systems ensure a smooth transition from build to operation.',
+    icon: '🏗️',
+    isVisible: true,
+    sortOrder: 3,
+  },
+];
+
+export const fallbackAwardSections: ContentPageSection[] = [
+  {
+    id: 'award-1',
+    pageKey: 'AWARDS',
+    title: '2025 Best of The Best Award',
+    body: 'Recognized for exceptional guest satisfaction and consistent operational excellence.',
+    icon: '🏆',
+    isVisible: true,
+    sortOrder: 1,
+  },
+  {
+    id: 'award-2',
+    pageKey: 'AWARDS',
+    title: 'Global Hospitality Platinum',
+    body: 'Acknowledged among leading global hospitality brands for luxury service delivery.',
+    icon: '🌟',
+    isVisible: true,
+    sortOrder: 2,
+  },
+  {
+    id: 'award-3',
+    pageKey: 'AWARDS',
+    title: 'Excellence in Architecture',
+    body: 'Honored for design leadership, sustainability, and premium interior execution.',
+    icon: '🏅',
+    isVisible: true,
+    sortOrder: 3,
   },
 ];
 

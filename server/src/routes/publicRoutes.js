@@ -68,6 +68,29 @@ router.get('/about', async (req, res) => {
   res.json(sections);
 });
 
+async function getContentPageSections(pageKey) {
+  return prisma.contentPageSection.findMany({
+    where: { pageKey, isVisible: true },
+    include: { imageAsset: true },
+    orderBy: { sortOrder: 'asc' },
+  });
+}
+
+router.get('/culture', async (req, res) => {
+  const sections = await getContentPageSections('CULTURE');
+  res.json(sections);
+});
+
+router.get('/development', async (req, res) => {
+  const sections = await getContentPageSections('DEVELOPMENT');
+  res.json(sections);
+});
+
+router.get('/awards', async (req, res) => {
+  const sections = await getContentPageSections('AWARDS');
+  res.json(sections);
+});
+
 router.get('/team', async (req, res) => {
   const team = await prisma.teamMember.findMany({
     where: { isVisible: true },

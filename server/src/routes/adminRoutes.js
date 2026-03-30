@@ -4,6 +4,11 @@ import { prisma } from '../db.js';
 import { createCrudRouter } from '../utils/createCrudRouter.js';
 import { logActivity } from '../utils/activity.js';
 import { slugify } from '../utils/slug.js';
+import {
+  defaultAwardSections,
+  defaultCultureSections,
+  defaultDevelopmentSections,
+} from '../data/defaultSeedData.js';
 
 const router = Router();
 
@@ -32,6 +37,133 @@ function validatePropertyInput(payload) {
   }
 
   return null;
+}
+
+function registerContentPageSectionRoutes({ path, pageKey, entityType }) {
+  router.get(path, async (req, res) => {
+    let items = await prisma.contentPageSection.findMany({
+      where: { pageKey },
+      include: { imageAsset: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    if (items.length === 0) {
+      const seedMap = {
+        CULTURE: defaultCultureSections,
+        DEVELOPMENT: defaultDevelopmentSections,
+        AWARDS: defaultAwardSections,
+      };
+      const defaults = seedMap[pageKey] || [];
+
+      if (defaults.length > 0) {
+        await prisma.contentPageSection.createMany({
+          data: defaults.map((item, index) => ({
+            pageKey,
+            title: item.title,
+            body: item.body,
+            icon: item.icon || null,
+            imageAssetId: item.imageAssetId || null,
+            isVisible: item.isVisible ?? true,
+            sortOrder: Number(item.sortOrder ?? index + 1),
+          })),
+        });
+
+        items = await prisma.contentPageSection.findMany({
+          where: { pageKey },
+          include: { imageAsset: true },
+          orderBy: { sortOrder: 'asc' },
+        });
+      }
+    }
+    res.json(items);
+  });
+
+  router.post(path, async (req, res) => {
+    const payload = {
+      title: String(req.body.title || '').trim(),
+      body: String(req.body.body || '').trim(),
+      icon: req.body.icon ? String(req.body.icon).trim() : null,
+      imageAssetId: req.body.imageAssetId ? String(req.body.imageAssetId) : null,
+      sortOrder: Number(req.body.sortOrder || 0),
+      isVisible: req.body.isVisible ?? true,
+      pageKey,
+    };
+
+    if (!payload.title || !payload.body) {
+      return res.status(400).json({ message: 'title and body are required' });
+    }
+
+    const created = await prisma.contentPageSection.create({
+      data: payload,
+      include: { imageAsset: true },
+    });
+
+    await logActivity({
+      admin: req.admin,
+      action: 'CREATE',
+      entityType,
+      entityId: created.id,
+      afterJson: created,
+    });
+
+    return res.status(201).json(created);
+  });
+
+  router.put(`${path}/:id`, async (req, res) => {
+    const existing = await prisma.contentPageSection.findUnique({ where: { id: req.params.id } });
+    if (!existing || existing.pageKey !== pageKey) {
+      return res.status(404).json({ message: `${entityType} not found` });
+    }
+
+    const payload = {
+      title: req.body.title !== undefined ? String(req.body.title || '').trim() : existing.title,
+      body: req.body.body !== undefined ? String(req.body.body || '').trim() : existing.body,
+      icon: req.body.icon !== undefined ? String(req.body.icon || '').trim() || null : existing.icon,
+      imageAssetId: req.body.imageAssetId !== undefined ? String(req.body.imageAssetId || '') || null : existing.imageAssetId,
+      sortOrder: req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : existing.sortOrder,
+      isVisible: req.body.isVisible !== undefined ? Boolean(req.body.isVisible) : existing.isVisible,
+    };
+
+    if (!payload.title || !payload.body) {
+      return res.status(400).json({ message: 'title and body are required' });
+    }
+
+    const updated = await prisma.contentPageSection.update({
+      where: { id: existing.id },
+      data: payload,
+      include: { imageAsset: true },
+    });
+
+    await logActivity({
+      admin: req.admin,
+      action: 'UPDATE',
+      entityType,
+      entityId: updated.id,
+      beforeJson: existing,
+      afterJson: updated,
+    });
+
+    return res.json(updated);
+  });
+
+  router.delete(`${path}/:id`, async (req, res) => {
+    const existing = await prisma.contentPageSection.findUnique({ where: { id: req.params.id } });
+    if (!existing || existing.pageKey !== pageKey) {
+      return res.status(404).json({ message: `${entityType} not found` });
+    }
+
+    await prisma.contentPageSection.delete({ where: { id: existing.id } });
+
+    await logActivity({
+      admin: req.admin,
+      action: 'DELETE',
+      entityType,
+      entityId: existing.id,
+      beforeJson: existing,
+    });
+
+    return res.json({ success: true });
+  });
 }
 
 router.get('/dashboard', async (req, res) => {
@@ -731,5 +863,23 @@ router.use('/social-links', createCrudRouter({
   model: 'socialLink',
   entityType: 'SOCIAL_LINK',
 }));
+
+registerContentPageSectionRoutes({
+  path: '/culture-sections',
+  pageKey: 'CULTURE',
+  entityType: 'CULTURE_SECTION',
+});
+
+registerContentPageSectionRoutes({
+  path: '/development-sections',
+  pageKey: 'DEVELOPMENT',
+  entityType: 'DEVELOPMENT_SECTION',
+});
+
+registerContentPageSectionRoutes({
+  path: '/award-sections',
+  pageKey: 'AWARDS',
+  entityType: 'AWARD_SECTION',
+});
 
 export default router;

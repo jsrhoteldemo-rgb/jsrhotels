@@ -40,6 +40,7 @@ function SocialIcon({ platform }: { platform: string }) {
 }
 
 const Footer = () => {
+  const developerLinkedInUrl = 'https://www.linkedin.com/in/harikumarpatel/';
   const { data } = usePublicData<FooterData>({
     path: '/api/public/footer',
     fallbackData: { siteSetting: fallbackSiteSetting, socialLinks: fallbackSocialLinks },
@@ -135,7 +136,12 @@ const Footer = () => {
       <div className="footer-bottom">
         <div className="container bottom-flex">
           <p>&copy; {new Date().getFullYear()} {data.siteSetting.brandName}. All rights reserved.</p>
-          <p className="designer-credit">Designed by Harikumar Patel</p>
+          <p className="designer-credit">
+            Designed and Developed by{' '}
+            <a href={developerLinkedInUrl} target="_blank" rel="noopener noreferrer">
+              Harikumar Patel
+            </a>
+          </p>
         </div>
       </div>
     </footer>

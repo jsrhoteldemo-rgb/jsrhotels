@@ -28,9 +28,9 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
+  const handleNavItemClick = () => {
+    window.setTimeout(() => setMobileMenuOpen(false), 0);
+  };
 
   const logoSrc = siteSetting.logoAsset?.url ? resolveAssetUrl(siteSetting.logoAsset.url) : '/logo.jpg';
 
@@ -49,31 +49,31 @@ const Navbar = () => {
         </Link>
 
         <nav className={`nav-links ${mobileMenuOpen ? 'active' : ''}`}>
-          <NavLink to="/" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/" onClick={handleNavItemClick}>
             Home
           </NavLink>
-          <NavLink to="/about" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/about" onClick={handleNavItemClick}>
             Our Story
           </NavLink>
-          <NavLink to="/services" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/services" onClick={handleNavItemClick}>
             Capabilities
           </NavLink>
-          <NavLink to="/development" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/development" onClick={handleNavItemClick}>
             Development
           </NavLink>
-          <NavLink to="/portfolio" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/portfolio" onClick={handleNavItemClick}>
             Portfolio
           </NavLink>
-          <NavLink to="/awards" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/awards" onClick={handleNavItemClick}>
             Awards
           </NavLink>
-          <NavLink to="/culture" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/culture" onClick={handleNavItemClick}>
             Culture
           </NavLink>
-          <NavLink to="/team" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/team" onClick={handleNavItemClick}>
             Team
           </NavLink>
-          <NavLink to="/contact" onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/contact" onClick={handleNavItemClick}>
             Contact
           </NavLink>
         </nav>

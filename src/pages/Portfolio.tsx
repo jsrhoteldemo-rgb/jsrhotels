@@ -69,6 +69,10 @@ const Portfolio = () => {
     };
   }, [filteredProperties]);
 
+  const visibleStatusSections = useMemo(() => {
+    return statusOrder.filter((statusKey) => groupedByStatus[statusKey].length > 0);
+  }, [groupedByStatus]);
+
   const selectedBrandName = useMemo(() => {
     if (brandFilter === 'ALL') return 'All Brands';
     return brandLookup.get(brandFilter) || 'Brand';
@@ -176,28 +180,28 @@ const Portfolio = () => {
         </section>
 
         {statusFilter === 'ALL' ? (
-          <div className="portfolio-status-sections">
-            {statusOrder.map((statusKey) => (
-              <section key={statusKey} className="portfolio-status-section">
-                <div className="portfolio-status-head">
-                  <h2>{statusLabelMap[statusKey]}</h2>
-                  <span>{groupedByStatus[statusKey].length} item(s)</span>
-                </div>
-
-                {groupedByStatus[statusKey].length === 0 ? (
-                  <div className="portfolio-empty-card">
-                    No properties found in this section for the selected brand.
+          visibleStatusSections.length === 0 ? (
+            <div className="portfolio-empty-card">
+              No properties match the selected brand and status filters.
+            </div>
+          ) : (
+            <div className="portfolio-status-sections">
+              {visibleStatusSections.map((statusKey) => (
+                <section key={statusKey} className="portfolio-status-section">
+                  <div className="portfolio-status-head">
+                    <h2>{statusLabelMap[statusKey]}</h2>
+                    <span>{groupedByStatus[statusKey].length} item(s)</span>
                   </div>
-                ) : (
+
                   <div className="portfolio-grid">
                     {groupedByStatus[statusKey].map((property, index) =>
                       renderCard(property, index),
                     )}
                   </div>
-                )}
-              </section>
-            ))}
-          </div>
+                </section>
+              ))}
+            </div>
+          )
         ) : filteredProperties.length === 0 ? (
           <div className="portfolio-empty-card">
             No properties match the selected brand and status filters.

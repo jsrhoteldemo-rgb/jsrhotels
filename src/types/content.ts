@@ -15,6 +15,7 @@ export interface HomeBlock {
   ctaText?: string | null;
   ctaUrl?: string | null;
   payload?: Record<string, unknown> | null;
+  imageAssetId?: string | null;
   imageAsset?: MediaAsset | null;
   isVisible: boolean;
   sortOrder: number;
@@ -25,6 +26,18 @@ export interface AboutSection {
   title: string;
   body: string;
   imageAsset?: MediaAsset | null;
+  isVisible: boolean;
+  sortOrder: number;
+}
+
+export interface ContentPageSection {
+  id: string;
+  pageKey: 'CULTURE' | 'DEVELOPMENT' | 'AWARDS';
+  title: string;
+  body: string;
+  icon?: string | null;
+  imageAsset?: MediaAsset | null;
+  imageAssetId?: string | null;
   isVisible: boolean;
   sortOrder: number;
 }

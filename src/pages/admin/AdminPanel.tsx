@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, Dispatch, FormEvent, ReactNode, SetStateAction } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import {
   Activity,
   BriefcaseBusiness,
@@ -226,7 +228,7 @@ const emptyPropertyForm: PropertyFormState = {
   zipCode: '',
   country: 'USA',
   sortOrder: 0,
-  keyInfoText: '{}',
+  keyInfoText: '',
   coverImageAssetId: '',
 };
 
@@ -324,14 +326,6 @@ const homeBlockSectionConfigs: HomeBlockSectionConfig[] = [
     defaultSortOrder: 9,
   },
 ];
-
-function prettyJson(input: unknown) {
-  try {
-    return JSON.stringify(input, null, 2);
-  } catch {
-    return '{}';
-  }
-}
 
 function formatSectionLabel(value: string) {
   return value
@@ -1550,7 +1544,9 @@ const AdminPanel = () => {
     try {
       const payload: Record<string, unknown> = {
         ...propertyForm,
-        keyInfo: JSON.parse(String(propertyForm.keyInfoText || '{}')),
+        keyInfo: String(propertyForm.keyInfoText || '').trim()
+          ? { html: String(propertyForm.keyInfoText) }
+          : null,
       };
 
       delete payload.keyInfoText;
@@ -3407,16 +3403,23 @@ const AdminPanel = () => {
                     </label>
                   </div>
 
-                  <label>
-                    <span>Additional Key Info (JSON)</span>
-                    <textarea
-                      placeholder='{"rooms":120,"opening_year":2028}'
+                  <div className="admin-form-group" style={{ marginBottom: '1.2rem' }}>
+                    <span style={{ fontSize: '0.86rem', fontWeight: 600, color: '#534f47', display: 'block', marginBottom: '0.4rem' }}>Additional Key Info (Rich Text)</span>
+                    <ReactQuill 
+                      theme="snow"
                       value={propertyForm.keyInfoText}
-                      onChange={(e) =>
-                        setPropertyForm((prev) => ({ ...prev, keyInfoText: e.target.value }))
+                      onChange={(content: string) =>
+                        setPropertyForm((prev) => ({ ...prev, keyInfoText: content }))
                       }
+                      modules={{
+                        toolbar: [
+                          ['bold', 'italic', 'underline', 'strike'],
+                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ],
+                      }}
+                      style={{ background: '#fff', borderRadius: '8px' }}
                     />
-                  </label>
+                  </div>
 
                   <div className="inline-group">
                     <label>
@@ -3503,7 +3506,12 @@ const AdminPanel = () => {
                               zipCode: property.zipCode,
                               country: 'USA',
                               sortOrder: property.sortOrder,
-                              keyInfoText: prettyJson(property.keyInfo || {}),
+                              keyInfoText:
+                                property.keyInfo &&
+                                typeof property.keyInfo === 'object' &&
+                                'html' in property.keyInfo
+                                  ? String((property.keyInfo as { html?: unknown }).html || '')
+                                  : '',
                               coverImageAssetId: property.coverImageAssetId || '',
                             });
                           }}

@@ -181,13 +181,22 @@ const PropertyDetail = () => {
             {property.keyInfo && typeof property.keyInfo === 'object' && (
               <>
                 <h3 style={{ margin: '1.5rem 0 0.75rem 0' }}>Additional Information</h3>
-                <ul style={{ paddingLeft: '1.1rem', color: 'var(--color-text-muted)' }}>
-                  {Object.entries(property.keyInfo).map(([key, value]) => (
-                    <li key={key} style={{ marginBottom: '0.35rem' }}>
-                      <strong>{key}:</strong> {String(value)}
-                    </li>
-                  ))}
-                </ul>
+                {'html' in property.keyInfo ? (
+                  <div
+                    style={{ color: 'var(--color-text-muted)', lineHeight: 1.6 }}
+                    dangerouslySetInnerHTML={{
+                      __html: String((property.keyInfo as { html?: unknown }).html || ''),
+                    }}
+                  />
+                ) : (
+                  <ul style={{ paddingLeft: '1.1rem', color: 'var(--color-text-muted)' }}>
+                    {Object.entries(property.keyInfo).map(([key, value]) => (
+                      <li key={key} style={{ marginBottom: '0.35rem' }}>
+                        <strong>{key}:</strong> {String(value)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </>
             )}
           </div>

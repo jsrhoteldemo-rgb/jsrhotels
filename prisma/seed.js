@@ -6,6 +6,9 @@ import {
   defaultContactInfo,
   defaultHomeBlocks,
   defaultLegalDocuments,
+  defaultCultureSections,
+  defaultDevelopmentSections,
+  defaultAwardSections,
   defaultServices,
   defaultSiteSetting,
   defaultSocialLinks,
@@ -155,6 +158,29 @@ async function seedLegalDocs() {
   }
 }
 
+async function seedContentPages() {
+  const cultureCount = await prisma.contentPageSection.count({ where: { pageKey: 'CULTURE' } });
+  if (cultureCount === 0) {
+    await prisma.contentPageSection.createMany({
+      data: defaultCultureSections.map((item) => ({ ...item, pageKey: 'CULTURE' })),
+    });
+  }
+
+  const developmentCount = await prisma.contentPageSection.count({ where: { pageKey: 'DEVELOPMENT' } });
+  if (developmentCount === 0) {
+    await prisma.contentPageSection.createMany({
+      data: defaultDevelopmentSections.map((item) => ({ ...item, pageKey: 'DEVELOPMENT' })),
+    });
+  }
+
+  const awardCount = await prisma.contentPageSection.count({ where: { pageKey: 'AWARDS' } });
+  if (awardCount === 0) {
+    await prisma.contentPageSection.createMany({
+      data: defaultAwardSections.map((item) => ({ ...item, pageKey: 'AWARDS' })),
+    });
+  }
+}
+
 async function main() {
   await seedAdmins();
   await seedSiteSettings();
@@ -166,6 +192,7 @@ async function main() {
   await seedContact();
   await seedSocialLinks();
   await seedLegalDocs();
+  await seedContentPages();
 }
 
 main()
