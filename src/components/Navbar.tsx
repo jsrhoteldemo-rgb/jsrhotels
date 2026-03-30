@@ -46,6 +46,21 @@ const Navbar = () => {
     ? resolveAssetUrl(siteSetting.logoAsset.url)
     : '/logo.jpg';
 
+  // Synchronize favicon with site logo
+  useEffect(() => {
+    if (logoSrc) {
+      const link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (link) {
+        link.href = logoSrc;
+      } else {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.href = logoSrc;
+        document.head.appendChild(newLink);
+      }
+    }
+  }, [logoSrc]);
+
   const isActivePath = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
