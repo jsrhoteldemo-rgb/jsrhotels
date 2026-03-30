@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, Dispatch, FormEvent, ReactNode, SetStateAction } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import Quill from 'quill';
+import 'quill/dist/quill.snow.css';
 import {
   Activity,
   BriefcaseBusiness,
@@ -552,6 +552,73 @@ function GenericListManager<T extends { id: string }>({
       )}
     </section>
   );
+}
+
+function RichTextEditor({
+  value,
+  onChange,
+  placeholder = 'Write details here...',
+}: {
+  value: string;
+  onChange: (content: string) => void;
+  placeholder?: string;
+}) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const quillRef = useRef<Quill | null>(null);
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    if (!hostRef.current || quillRef.current) return;
+
+    const editorElement = document.createElement('div');
+    hostRef.current.innerHTML = '';
+    hostRef.current.appendChild(editorElement);
+
+    const quill = new Quill(editorElement, {
+      theme: 'snow',
+      placeholder,
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['link'],
+          ['clean'],
+        ],
+      },
+    });
+
+    const handleTextChange = () => {
+      const html = quill.root.innerHTML;
+      const normalized = html === '<p><br></p>' ? '' : html;
+      onChangeRef.current(normalized);
+    };
+
+    quill.on('text-change', handleTextChange);
+    quillRef.current = quill;
+
+    return () => {
+      quill.off('text-change', handleTextChange);
+      quillRef.current = null;
+    };
+  }, [placeholder]);
+
+  useEffect(() => {
+    const quill = quillRef.current;
+    if (!quill) return;
+
+    const currentHtml = quill.root.innerHTML === '<p><br></p>' ? '' : quill.root.innerHTML;
+    const nextHtml = value || '';
+
+    if (currentHtml !== nextHtml) {
+      quill.root.innerHTML = nextHtml || '<p><br></p>';
+    }
+  }, [value]);
+
+  return <div className="admin-richtext-host" ref={hostRef} />;
 }
 
 function getHomeBlockFormDefaults() {
@@ -3405,19 +3472,12 @@ const AdminPanel = () => {
 
                   <div className="admin-form-group" style={{ marginBottom: '1.2rem' }}>
                     <span style={{ fontSize: '0.86rem', fontWeight: 600, color: '#534f47', display: 'block', marginBottom: '0.4rem' }}>Additional Key Info (Rich Text)</span>
-                    <ReactQuill 
-                      theme="snow"
+                    <RichTextEditor
                       value={propertyForm.keyInfoText}
                       onChange={(content: string) =>
                         setPropertyForm((prev) => ({ ...prev, keyInfoText: content }))
                       }
-                      modules={{
-                        toolbar: [
-                          ['bold', 'italic', 'underline', 'strike'],
-                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        ],
-                      }}
-                      style={{ background: '#fff', borderRadius: '8px' }}
+                      placeholder="Add additional property information..."
                     />
                   </div>
 
