@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import type { MouseEvent } from 'react';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { resolveAssetUrl } from '../config/api';
 import { fallbackSiteSetting } from '../data/fallbackContent';
@@ -11,6 +12,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const { data: siteSetting } = usePublicData<SiteSetting>({
     path: '/api/public/site-settings',
@@ -28,8 +30,12 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleNavItemClick = () => {
-    window.setTimeout(() => setMobileMenuOpen(false), 0);
+  const handleNavItemClick = (path: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (location.pathname !== path) {
+      navigate(path);
+    }
+    setMobileMenuOpen(false);
   };
 
   const logoSrc = siteSetting.logoAsset?.url ? resolveAssetUrl(siteSetting.logoAsset.url) : '/logo.jpg';
@@ -49,31 +55,31 @@ const Navbar = () => {
         </Link>
 
         <nav className={`nav-links ${mobileMenuOpen ? 'active' : ''}`}>
-          <NavLink to="/" onClick={handleNavItemClick}>
+          <NavLink to="/" onClick={handleNavItemClick('/')}>
             Home
           </NavLink>
-          <NavLink to="/about" onClick={handleNavItemClick}>
+          <NavLink to="/about" onClick={handleNavItemClick('/about')}>
             Our Story
           </NavLink>
-          <NavLink to="/services" onClick={handleNavItemClick}>
+          <NavLink to="/services" onClick={handleNavItemClick('/services')}>
             Capabilities
           </NavLink>
-          <NavLink to="/development" onClick={handleNavItemClick}>
+          <NavLink to="/development" onClick={handleNavItemClick('/development')}>
             Development
           </NavLink>
-          <NavLink to="/portfolio" onClick={handleNavItemClick}>
+          <NavLink to="/portfolio" onClick={handleNavItemClick('/portfolio')}>
             Portfolio
           </NavLink>
-          <NavLink to="/awards" onClick={handleNavItemClick}>
+          <NavLink to="/awards" onClick={handleNavItemClick('/awards')}>
             Awards
           </NavLink>
-          <NavLink to="/culture" onClick={handleNavItemClick}>
+          <NavLink to="/culture" onClick={handleNavItemClick('/culture')}>
             Culture
           </NavLink>
-          <NavLink to="/team" onClick={handleNavItemClick}>
+          <NavLink to="/team" onClick={handleNavItemClick('/team')}>
             Team
           </NavLink>
-          <NavLink to="/contact" onClick={handleNavItemClick}>
+          <NavLink to="/contact" onClick={handleNavItemClick('/contact')}>
             Contact
           </NavLink>
         </nav>
