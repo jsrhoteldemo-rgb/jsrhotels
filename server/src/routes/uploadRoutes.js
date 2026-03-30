@@ -7,13 +7,15 @@ import { logActivity } from '../utils/activity.js';
 
 const router = Router();
 
-if (!fs.existsSync(env.uploadsDir)) {
-  fs.mkdirSync(env.uploadsDir, { recursive: true });
+const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : env.uploadsDir;
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
-    cb(null, env.uploadsDir);
+    cb(null, uploadsDir);
   },
   filename(req, file, cb) {
     const safeName = file.originalname.replace(/\s+/g, '-');
