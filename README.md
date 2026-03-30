@@ -28,6 +28,32 @@ npm install
 
 Update `.env` with your PostgreSQL credentials.
 
+## 1.1) Neon DB Setup (Recommended for Production)
+
+In Neon, copy both connection strings:
+
+1. `Pooled connection` -> use as `DATABASE_URL`
+2. `Direct connection` -> use as `DIRECT_URL`
+
+Example:
+
+```env
+DATABASE_URL="postgresql://...-pooler.neon.tech/...?...&sslmode=require"
+DIRECT_URL="postgresql://...neon.tech/...?...&sslmode=require"
+```
+
+For frontend API calls (especially on Vercel), set:
+
+```env
+VITE_API_BASE_URL="https://your-api-domain.com"
+```
+
+If your backend is on another domain, set:
+
+```env
+CLIENT_ORIGIN="https://your-vercel-domain.vercel.app"
+```
+
 ## 2) Database Init
 
 ```bash

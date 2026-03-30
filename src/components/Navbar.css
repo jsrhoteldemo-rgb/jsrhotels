@@ -3,7 +3,7 @@
   top: 0;
   width: 100%;
   padding: 1.5rem 0;
-  z-index: 1000;
+  z-index: 3000;
   transition: var(--transition-smooth);
   border-bottom: 1px solid transparent;
 }
@@ -108,6 +108,7 @@
     opacity: 0;
     transition: var(--transition-smooth);
     pointer-events: none;
+    z-index: 3100;
   }
 
   /* Since the mobile dropdown has a white background, the links should always be dark */
