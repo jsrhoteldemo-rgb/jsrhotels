@@ -1405,8 +1405,8 @@ const AdminPanel = () => {
   const [token, setToken] = useState<string | null>(getAdminToken());
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null);
 
-  const [loginEmail, setLoginEmail] = useState('admin@jsrhotels.com');
-  const [loginPassword, setLoginPassword] = useState('Admin@123');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [tab, setTab] = useState<AdminTabKey>('dashboard');
