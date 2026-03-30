@@ -387,6 +387,7 @@ function GenericListManager<T extends { id: string }>({
   summary,
   entityLabel = 'Item',
   onFeedback,
+  isUploadBusy = false,
 }: {
   title: string;
   subtitle?: string;
@@ -400,6 +401,7 @@ function GenericListManager<T extends { id: string }>({
   summary: (item: T) => ReactNode;
   entityLabel?: string;
   onFeedback?: (type: 'success' | 'error', message: string) => void;
+  isUploadBusy?: boolean;
 }) {
   const [items, setItems] = useState<T[]>([]);
   const [form, setForm] = useState<Record<string, unknown>>(defaults);
@@ -431,6 +433,10 @@ function GenericListManager<T extends { id: string }>({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isUploadBusy) {
+      onFeedback?.('error', 'Please wait for image upload to finish.');
+      return;
+    }
     const payload = toPayload(form);
 
     try {
@@ -505,8 +511,8 @@ function GenericListManager<T extends { id: string }>({
         <form className="admin-form admin-form-panel" onSubmit={handleSubmit}>
           {renderFields(form, setForm)}
           <div className="admin-form-actions">
-            <button type="submit" className="btn-primary">
-              {editId ? 'Update' : 'Create'}
+            <button type="submit" className="btn-primary" disabled={isUploadBusy}>
+              {isUploadBusy ? 'Uploading image...' : editId ? 'Update' : 'Create'}
             </button>
             <button
               type="button"
@@ -1412,6 +1418,7 @@ const AdminPanel = () => {
   const [tab, setTab] = useState<AdminTabKey>('dashboard');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toast, setToast] = useState<AdminNotice | null>(null);
+  const [uploadingFieldCount, setUploadingFieldCount] = useState(0);
   const toastTimeoutRef = useRef<number | null>(null);
 
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
@@ -2134,14 +2141,22 @@ const AdminPanel = () => {
     setter: Dispatch<SetStateAction<Record<string, unknown>>>,
     field: string,
     file: File | null,
+    previewField?: string,
   ) {
     if (!file) return;
+    setUploadingFieldCount((prev) => prev + 1);
     try {
       const asset = await uploadFile(file);
-      setter((prev) => ({ ...prev, [field]: asset.id }));
+      setter((prev) => ({
+        ...prev,
+        [field]: String(asset.id || ''),
+        ...(previewField ? { [previewField]: String(asset.url || '') } : {}),
+      }));
       pushNotice('success', 'File uploaded successfully.');
     } catch (err) {
       pushNotice('error', (err as Error).message);
+    } finally {
+      setUploadingFieldCount((prev) => Math.max(0, prev - 1));
     }
   }
 
@@ -3044,6 +3059,7 @@ const AdminPanel = () => {
                 subtitle="Maintain leadership and team profile cards."
                 entityLabel="Team member"
                 onFeedback={(type, message) => pushNotice(type, message)}
+                isUploadBusy={uploadingFieldCount > 0}
                 endpoint="/api/admin/team-members"
                 defaults={{
                   fullName: '',
@@ -3051,6 +3067,7 @@ const AdminPanel = () => {
                   bio: '',
                   profileUrl: '',
                   imageAssetId: '',
+                  imagePreviewUrl: '',
                   sortOrder: 0,
                   isVisible: true,
                 }}
@@ -3112,16 +3129,38 @@ const AdminPanel = () => {
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={async (e) =>
-                            uploadForField(
+                          onChange={async (e) => {
+                            const input = e.currentTarget;
+                            await uploadForField(
                               setForm,
                               'imageAssetId',
                               e.target.files?.[0] || null,
-                            )
-                          }
+                              'imagePreviewUrl',
+                            );
+                            input.value = '';
+                          }}
                         />
                       </label>
                     </div>
+                    {String(form.imageAssetId || '').trim() && (
+                      <p className="admin-item-meta">
+                        Assigned Asset ID: <strong>{String(form.imageAssetId)}</strong>
+                      </p>
+                    )}
+                    {((form.imageAsset as { url?: string } | undefined)?.url ||
+                      String(form.imagePreviewUrl || '')) && (
+                      <div className="admin-image-preview">
+                        <img
+                          src={
+                            resolveAssetUrl(
+                              (form.imageAsset as { url?: string } | undefined)?.url ||
+                                String(form.imagePreviewUrl || ''),
+                            ) || '/no-image.svg'
+                          }
+                          alt="Team preview"
+                        />
+                      </div>
+                    )}
                     <div className="inline-group">
                       <label>
                         <span>Sort Order</span>
@@ -3151,7 +3190,7 @@ const AdminPanel = () => {
                   title: form.title,
                   bio: form.bio,
                   profileUrl: form.profileUrl || null,
-                  imageAssetId: form.imageAssetId || null,
+                  imageAssetId: String(form.imageAssetId || '').trim() || null,
                   sortOrder: Number(form.sortOrder || 0),
                   isVisible: Boolean(form.isVisible),
                 })}
