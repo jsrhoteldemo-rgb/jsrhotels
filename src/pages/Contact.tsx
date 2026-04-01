@@ -6,6 +6,7 @@ import { fallbackContact } from '../data/fallbackContent';
 import { usePublicData } from '../hooks/usePublicData';
 import { useViewTracker } from '../hooks/useViewTracker';
 import type { ContactInfo } from '../types/content';
+import { isValidEmail, isValidUsPhone, normalizeEmail } from '../utils/validation';
 import './Contact.css';
 
 const Contact = () => {
@@ -22,6 +23,13 @@ const Contact = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const heading = contact?.heading || 'Contact';
+  const introText = contact?.introText || '';
+  const address = contact?.address || '-';
+  const investmentEmail = contact?.investmentEmail || '-';
+  const investmentPhone = contact?.investmentPhone || '-';
+  const generalEmail = contact?.generalEmail || '-';
+  const generalPhone = contact?.generalPhone || '-';
 
   useViewTracker({ path: '/contact' });
 
@@ -29,11 +37,25 @@ const Contact = () => {
     event.preventDefault();
     setSubmitStatus(null);
     setIsSubmitting(true);
+    const email = normalizeEmail(form.email);
+    const phone = String(form.phone || '').trim();
+
+    if (!isValidEmail(email)) {
+      setSubmitStatus({ type: 'error', text: 'Please enter a valid email address.' });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (phone && !isValidUsPhone(phone)) {
+      setSubmitStatus({ type: 'error', text: 'Please enter a valid US phone number.' });
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       await apiRequest<{ success: true; id: string }>('/api/public/contact-messages', {
         method: 'POST',
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, email }),
       });
 
       setForm({
@@ -63,8 +85,8 @@ const Contact = () => {
           transition={{ duration: 0.8 }}
           style={{ marginBottom: '4rem' }}
         >
-          <h1 style={{ fontSize: '3.5rem', marginBottom: '1rem', color: 'var(--color-accent)' }}>{contact.heading}</h1>
-          <p style={{ maxWidth: '600px', color: 'var(--color-text-muted)', fontSize: '1.1rem' }}>{contact.introText}</p>
+          <h1 style={{ fontSize: '3.5rem', marginBottom: '1rem', color: 'var(--color-accent)' }}>{heading}</h1>
+          <p style={{ maxWidth: '600px', color: 'var(--color-text-muted)', fontSize: '1.1rem' }}>{introText}</p>
         </motion.div>
 
         <div className="contact-grid">
@@ -77,17 +99,17 @@ const Contact = () => {
             <h2>Get in Touch</h2>
             <div className="info-item">
               <h4>Address</h4>
-              <p>{contact.address}</p>
+              <p>{address}</p>
             </div>
             <div className="info-item">
               <h4>Investment Inquiries</h4>
-              <p>Email: {contact.investmentEmail || '-'}</p>
-              <p>Phone: {contact.investmentPhone || '-'}</p>
+              <p>Email: {investmentEmail}</p>
+              <p>Phone: {investmentPhone}</p>
             </div>
             <div className="info-item">
               <h4>General Inquiries</h4>
-              <p>Email: {contact.generalEmail}</p>
-              <p>Phone: {contact.generalPhone}</p>
+              <p>Email: {generalEmail}</p>
+              <p>Phone: {generalPhone}</p>
             </div>
           </motion.div>
 

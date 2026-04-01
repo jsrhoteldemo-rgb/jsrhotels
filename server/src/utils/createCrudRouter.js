@@ -14,6 +14,8 @@ export function createCrudRouter({
   orderBy = { sortOrder: 'asc' },
   preprocessCreate = (payload) => payload,
   preprocessUpdate = (payload) => payload,
+  validateCreate = () => null,
+  validateUpdate = () => null,
 }) {
   const router = Router();
 
@@ -33,7 +35,13 @@ export function createCrudRouter({
   });
 
   router.post('/', async (req, res) => {
-    const data = preprocessCreate(sanitizePayload(req.body));
+    const payload = sanitizePayload(req.body);
+    const createValidationError = validateCreate(payload);
+    if (createValidationError) {
+      return res.status(400).json({ message: createValidationError });
+    }
+
+    const data = preprocessCreate(payload);
     const created = await prisma[model].create({ data, include });
 
     await logActivity({
@@ -54,7 +62,13 @@ export function createCrudRouter({
       return res.status(404).json({ message: `${entityType} not found` });
     }
 
-    const data = preprocessUpdate(sanitizePayload(req.body), existing);
+    const payload = sanitizePayload(req.body);
+    const updateValidationError = validateUpdate(payload, existing);
+    if (updateValidationError) {
+      return res.status(400).json({ message: updateValidationError });
+    }
+
+    const data = preprocessUpdate(payload, existing);
     const updated = await prisma[model].update({
       where: { id: req.params.id },
       data,

@@ -5,6 +5,11 @@ import { prisma } from '../db.js';
 import { env } from '../config/env.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logActivity } from '../utils/activity.js';
+import {
+  isStrongPassword,
+  isValidEmail,
+  normalizeEmail,
+} from '../utils/validation.js';
 
 const router = Router();
 
@@ -18,33 +23,59 @@ router.post('/setup-first-admin', async (req, res) => {
     return res.status(400).json({ message: 'Initial admin already exists' });
   }
 
-  const { fullName, email, password } = req.body;
+  const fullName = String(req.body.fullName || '').trim();
+  const email = normalizeEmail(req.body.email);
+  const password = String(req.body.password || '');
 
   if (!fullName || !email || !password) {
     return res.status(400).json({ message: 'fullName, email, and password are required' });
   }
 
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ message: 'Password must be 8+ characters and include letters and numbers' });
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await prisma.admin.create({
-    data: { fullName, email: email.toLowerCase(), passwordHash, isSystemAdmin: true },
+    data: { fullName, email, passwordHash, isSystemAdmin: true },
+    include: { profileImageAsset: true },
   });
 
   const token = signToken(admin);
 
   return res.status(201).json({
     token,
-    admin: { id: admin.id, fullName: admin.fullName, email: admin.email, isSystemAdmin: admin.isSystemAdmin },
+    admin: {
+      id: admin.id,
+      fullName: admin.fullName,
+      email: admin.email,
+      isSystemAdmin: admin.isSystemAdmin,
+      profileImageAssetId: admin.profileImageAssetId || null,
+      profileImageAsset: admin.profileImageAsset || null,
+    },
   });
 });
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const email = normalizeEmail(req.body.email);
+  const password = String(req.body.password || '');
 
   if (!email || !password) {
     return res.status(400).json({ message: 'email and password are required' });
   }
 
-  const admin = await prisma.admin.findUnique({ where: { email: email.toLowerCase() } });
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  const admin = await prisma.admin.findUnique({
+    where: { email },
+    include: { profileImageAsset: true },
+  });
 
   if (!admin) {
     return res.status(401).json({ message: 'Invalid credentials' });
@@ -67,7 +98,14 @@ router.post('/login', async (req, res) => {
 
   return res.json({
     token,
-    admin: { id: admin.id, fullName: admin.fullName, email: admin.email, isSystemAdmin: admin.isSystemAdmin },
+    admin: {
+      id: admin.id,
+      fullName: admin.fullName,
+      email: admin.email,
+      isSystemAdmin: admin.isSystemAdmin,
+      profileImageAssetId: admin.profileImageAssetId || null,
+      profileImageAsset: admin.profileImageAsset || null,
+    },
   });
 });
 

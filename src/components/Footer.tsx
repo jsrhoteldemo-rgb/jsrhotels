@@ -45,8 +45,12 @@ const Footer = () => {
     path: '/api/public/footer',
     fallbackData: { siteSetting: fallbackSiteSetting, socialLinks: fallbackSocialLinks },
   });
+  const siteSetting = data?.siteSetting;
+  const socialLinks = data?.socialLinks || [];
+  const contact = data?.contact;
 
-  const logoSrc = data.siteSetting.logoAsset?.url ? resolveAssetUrl(data.siteSetting.logoAsset.url) : '/logo.jpg';
+  const logoAssetUrl = siteSetting?.logoAsset?.url;
+  const logoSrc = logoAssetUrl ? resolveAssetUrl(logoAssetUrl) : '/logo.jpg';
 
   return (
     <footer className="footer">
@@ -55,17 +59,17 @@ const Footer = () => {
           <div className="footer-logo-wrapper">
             <img
               src={logoSrc}
-              alt={`${data.siteSetting.brandName} Logo`}
+              alt={`${siteSetting?.brandName || 'JSR Hotels'} Logo`}
               className="footer-logo"
               onError={(event) => {
                 event.currentTarget.src = '/logo.jpg';
               }}
             />
-            <h2 className="footer-brand-name">{data.siteSetting.brandName}</h2>
+            <h2 className="footer-brand-name">{siteSetting?.brandName || 'JSR Hotels'}</h2>
           </div>
-          <p>{data.siteSetting.footerTagline || fallbackSiteSetting.footerTagline}</p>
+          <p>{siteSetting?.footerTagline || ''}</p>
           <div className="social-links">
-            {data.socialLinks
+            {socialLinks
               .filter((link) => link.isVisible)
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((link) => (
@@ -95,9 +99,6 @@ const Footer = () => {
               <Link to="/portfolio">Portfolio</Link>
             </li>
             <li>
-              <Link to="/development">Property Development</Link>
-            </li>
-            <li>
               <Link to="/services">Capabilities</Link>
             </li>
             <li>
@@ -117,17 +118,17 @@ const Footer = () => {
 
         <div className="footer-contact">
           <h3>Contact Us</h3>
-          <p>{data.contact?.address || '123 Luxury Ave, Beverly Hills, CA 90210'}</p>
+          <p>{contact?.address || ''}</p>
           <p>
             Email:{' '}
-            <a href={`mailto:${data.contact?.generalEmail || 'info@jsrhotels.com'}`}>
-              {data.contact?.generalEmail || 'info@jsrhotels.com'}
+            <a href={`mailto:${contact?.generalEmail || ''}`}>
+              {contact?.generalEmail || '-'}
             </a>
           </p>
           <p>
             Phone:{' '}
-            <a href={`tel:${(data.contact?.generalPhone || '+1 (555) 123-4567').replace(/[^+\d]/g, '')}`}>
-              {data.contact?.generalPhone || '+1 (555) 123-4567'}
+            <a href={`tel:${(contact?.generalPhone || '').replace(/[^+\d]/g, '')}`}>
+              {contact?.generalPhone || '-'}
             </a>
           </p>
         </div>
@@ -135,7 +136,7 @@ const Footer = () => {
 
       <div className="footer-bottom">
         <div className="container bottom-flex">
-          <p>&copy; {new Date().getFullYear()} {data.siteSetting.brandName}. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {siteSetting?.brandName || 'JSR Hotels'}. All rights reserved.</p>
           <p className="designer-credit">
             Designed and Developed by{' '}
             <a href={developerLinkedInUrl} target="_blank" rel="noopener noreferrer">

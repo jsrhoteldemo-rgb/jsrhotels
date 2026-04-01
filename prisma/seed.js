@@ -7,7 +7,6 @@ import {
   defaultHomeBlocks,
   defaultLegalDocuments,
   defaultCultureSections,
-  defaultDevelopmentSections,
   defaultAwardSections,
   defaultServices,
   defaultSiteSetting,
@@ -148,6 +147,38 @@ async function seedSocialLinks() {
   await prisma.socialLink.createMany({ data: defaultSocialLinks });
 }
 
+async function seedJobOpportunities() {
+  const count = await prisma.jobOpportunity.count();
+  if (count > 0) return;
+
+  await prisma.jobOpportunity.createMany({
+    data: [
+      {
+        title: 'Front Desk Manager',
+        department: 'Operations',
+        employmentType: 'Full-time',
+        locationCity: 'Los Angeles',
+        locationState: 'CA',
+        description:
+          'Lead guest check-in operations, team scheduling, and service quality for a flagship property.',
+        isActive: true,
+        sortOrder: 1,
+      },
+      {
+        title: 'Guest Relations Executive',
+        department: 'Guest Experience',
+        employmentType: 'Full-time',
+        locationCity: 'Miami',
+        locationState: 'FL',
+        description:
+          'Handle guest escalations, VIP requests, and service recovery to maintain premium experience standards.',
+        isActive: true,
+        sortOrder: 2,
+      },
+    ],
+  });
+}
+
 async function seedLegalDocs() {
   for (const doc of defaultLegalDocuments) {
     await prisma.legalDocument.upsert({
@@ -163,13 +194,6 @@ async function seedContentPages() {
   if (cultureCount === 0) {
     await prisma.contentPageSection.createMany({
       data: defaultCultureSections.map((item) => ({ ...item, pageKey: 'CULTURE' })),
-    });
-  }
-
-  const developmentCount = await prisma.contentPageSection.count({ where: { pageKey: 'DEVELOPMENT' } });
-  if (developmentCount === 0) {
-    await prisma.contentPageSection.createMany({
-      data: defaultDevelopmentSections.map((item) => ({ ...item, pageKey: 'DEVELOPMENT' })),
     });
   }
 
@@ -191,6 +215,7 @@ async function main() {
   await seedBrandsAndPortfolio();
   await seedContact();
   await seedSocialLinks();
+  await seedJobOpportunities();
   await seedLegalDocs();
   await seedContentPages();
 }

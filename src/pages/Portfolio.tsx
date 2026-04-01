@@ -31,12 +31,12 @@ const statusLabelMap: Record<PortfolioStatus, string> = {
 const statusOrder: PortfolioStatus[] = ['UNDER_CONSTRUCTION', 'COMPLETED'];
 
 const Portfolio = () => {
-  const { data: brands } = usePublicData<HotelBrand[]>({
+  const { data: brands, loading: brandsLoading } = usePublicData<HotelBrand[]>({
     path: '/api/public/brands',
     fallbackData: fallbackBrands,
   });
 
-  const { data: properties } = usePublicData<PortfolioProperty[]>({
+  const { data: properties, loading: propertiesLoading } = usePublicData<PortfolioProperty[]>({
     path: '/api/public/portfolio',
     fallbackData: fallbackProperties,
   });
@@ -47,14 +47,17 @@ const Portfolio = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
   const statusOptions: StatusFilter[] = ['ALL', 'UNDER_CONSTRUCTION', 'COMPLETED'];
+  const brandsList = useMemo(() => brands ?? [], [brands]);
+  const propertiesList = useMemo(() => properties ?? [], [properties]);
+  const isInitialLoading = (brands === null || properties === null) && (brandsLoading || propertiesLoading);
 
   const brandLookup = useMemo(() => {
-    return new Map(brands.map((brand) => [brand.id, brand.name]));
-  }, [brands]);
+    return new Map(brandsList.map((brand) => [brand.id, brand.name]));
+  }, [brandsList]);
 
   const visibleProperties = useMemo(() => {
-    return properties.filter((item) => item.isVisible);
-  }, [properties]);
+    return propertiesList.filter((item) => item.isVisible);
+  }, [propertiesList]);
 
   const filteredProperties = useMemo(() => {
     return visibleProperties
@@ -140,7 +143,7 @@ const Portfolio = () => {
               >
                 All Brands
               </button>
-              {brands.map((brand) => (
+              {brandsList.map((brand) => (
                 <button
                   key={brand.id}
                   type="button"
@@ -179,7 +182,21 @@ const Portfolio = () => {
           </div>
         </section>
 
-        {statusFilter === 'ALL' ? (
+        {isInitialLoading ? (
+          <div className="portfolio-grid" aria-live="polite" aria-label="Loading properties">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <article key={`portfolio-skeleton-${index}`} className="portfolio-card portfolio-card-skeleton">
+                <div className="portfolio-card-media portfolio-skeleton-block" />
+                <div className="portfolio-card-body">
+                  <div className="portfolio-skeleton-line portfolio-skeleton-title" />
+                  <div className="portfolio-skeleton-line portfolio-skeleton-meta" />
+                  <div className="portfolio-skeleton-line" />
+                  <div className="portfolio-skeleton-line portfolio-skeleton-short" />
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : statusFilter === 'ALL' ? (
           visibleStatusSections.length === 0 ? (
             <div className="portfolio-empty-card">
               No properties match the selected brand and status filters.

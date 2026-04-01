@@ -195,36 +195,6 @@ export const fallbackCultureSections: ContentPageSection[] = [
   },
 ];
 
-export const fallbackDevelopmentSections: ContentPageSection[] = [
-  {
-    id: 'dev-1',
-    pageKey: 'DEVELOPMENT',
-    title: 'Vision & Site Selection',
-    body: 'We identify high-potential locations through market insights, accessibility studies, and long-term asset strategy.',
-    icon: '📍',
-    isVisible: true,
-    sortOrder: 1,
-  },
-  {
-    id: 'dev-2',
-    pageKey: 'DEVELOPMENT',
-    title: 'Architectural Excellence',
-    body: 'We design bold, timeless properties with top architects while balancing operational efficiency and guest comfort.',
-    icon: '🏛️',
-    isVisible: true,
-    sortOrder: 2,
-  },
-  {
-    id: 'dev-3',
-    pageKey: 'DEVELOPMENT',
-    title: 'Construction & Integration',
-    body: 'Premium execution, sustainable materials, and smart systems ensure a smooth transition from build to operation.',
-    icon: '🏗️',
-    isVisible: true,
-    sortOrder: 3,
-  },
-];
-
 export const fallbackAwardSections: ContentPageSection[] = [
   {
     id: 'award-1',

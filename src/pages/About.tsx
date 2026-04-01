@@ -19,7 +19,7 @@ const About = () => {
 
   useViewTracker({ path: '/about' });
 
-  const visibleSections = sections.filter((section) => section.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
+  const visibleSections = (sections || []).filter((section) => section.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
   const primary = visibleSections[0];
 
   return (

@@ -141,6 +141,42 @@
   display: grid;
 }
 
+.portfolio-card-skeleton {
+  pointer-events: none;
+}
+
+.portfolio-skeleton-block,
+.portfolio-skeleton-line {
+  background: linear-gradient(
+    110deg,
+    rgba(229, 224, 214, 0.9) 8%,
+    rgba(246, 242, 235, 1) 18%,
+    rgba(229, 224, 214, 0.9) 33%
+  );
+  background-size: 220% 100%;
+  animation: portfolio-skeleton-pulse 1.2s linear infinite;
+}
+
+.portfolio-skeleton-line {
+  height: 11px;
+  border-radius: 999px;
+  margin-top: 0.5rem;
+}
+
+.portfolio-skeleton-title {
+  height: 18px;
+  width: 74%;
+  margin-top: 0;
+}
+
+.portfolio-skeleton-meta {
+  width: 52%;
+}
+
+.portfolio-skeleton-short {
+  width: 62%;
+}
+
 .portfolio-card-media {
   position: relative;
   height: 220px;
@@ -246,6 +282,12 @@
   padding: 1rem;
   color: #6a6458;
   font-size: 0.92rem;
+}
+
+@keyframes portfolio-skeleton-pulse {
+  to {
+    background-position-x: -220%;
+  }
 }
 
 @media (max-width: 1024px) {

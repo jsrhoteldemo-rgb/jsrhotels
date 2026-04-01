@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { resolveAssetUrl } from '../config/api';
 import { fallbackSiteSetting } from '../data/fallbackContent';
-import { usePublicData } from '../hooks/usePublicData';
+import { prefetchPublicData, usePublicData } from '../hooks/usePublicData';
 import type { SiteSetting } from '../types/content';
 import './Navbar.css';
 
@@ -12,7 +12,6 @@ const navItems = [
   { path: '/', label: 'Home' },
   { path: '/about', label: 'Our Story' },
   { path: '/services', label: 'Capabilities' },
-  { path: '/development', label: 'Development' },
   { path: '/portfolio', label: 'Portfolio' },
   { path: '/awards', label: 'Awards' },
   { path: '/culture', label: 'Culture' },
@@ -33,6 +32,10 @@ const Navbar = () => {
 
   const isHomePage = location.pathname === '/';
   const isSolid = !isHomePage || scrolled || mobileMenuOpen;
+  const prefetchPortfolioData = useCallback(() => {
+    void prefetchPublicData('/api/public/brands');
+    void prefetchPublicData('/api/public/portfolio');
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -42,9 +45,17 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const logoSrc = siteSetting.logoAsset?.url
-    ? resolveAssetUrl(siteSetting.logoAsset.url)
-    : '/logo.jpg';
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      prefetchPortfolioData();
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [prefetchPortfolioData]);
+
+  const logoAssetUrl = siteSetting?.logoAsset?.url;
+  const logoSrc = logoAssetUrl ? resolveAssetUrl(logoAssetUrl) : '/logo.jpg';
+  const brandName = siteSetting?.brandName || 'JSR Hotels';
 
   // Synchronize favicon with site logo
   useEffect(() => {
@@ -92,7 +103,7 @@ const Navbar = () => {
         <Link to="/" className="nav-logo">
           <img
             src={logoSrc}
-            alt={`${siteSetting.brandName || 'JSR Hotels'} Logo`}
+            alt={`${brandName} Logo`}
             className="nav-logo-img"
             onError={(event) => {
               event.currentTarget.src = '/logo.jpg';
@@ -107,6 +118,9 @@ const Navbar = () => {
               href={item.path}
               className={isActivePath(item.path) ? 'active' : ''}
               onClick={handleRouteClick(item.path)}
+              onMouseEnter={item.path === '/portfolio' ? prefetchPortfolioData : undefined}
+              onFocus={item.path === '/portfolio' ? prefetchPortfolioData : undefined}
+              onTouchStart={item.path === '/portfolio' ? prefetchPortfolioData : undefined}
             >
               {item.label}
             </a>

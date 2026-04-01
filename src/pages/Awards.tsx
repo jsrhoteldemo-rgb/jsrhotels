@@ -12,10 +12,8 @@ const Awards = () => {
   });
   useViewTracker({ path: '/awards' });
 
-  const visibleSections = sections.filter((item) => item.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
-  const intro =
-    visibleSections[0]?.body ||
-    'Recognized globally for unparalleled service, exquisite design, and visionary hospitality management.';
+  const visibleSections = (sections || []).filter((item) => item.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
+  const intro = visibleSections[0]?.body || '';
 
   return (
     <div className="page-wrapper inner-page-padding">

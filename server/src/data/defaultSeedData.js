@@ -187,30 +187,6 @@ export const defaultCultureSections = [
   },
 ];
 
-export const defaultDevelopmentSections = [
-  {
-    title: 'Vision & Site Selection',
-    body: 'Our development journey starts with high-potential locations. We combine market research, accessibility studies, and long-term value planning to build landmark destinations.',
-    icon: '📍',
-    sortOrder: 1,
-    isVisible: true,
-  },
-  {
-    title: 'Architectural Excellence',
-    body: 'We collaborate with top architects to design bold spaces that balance modern aesthetics with timeless functionality and local context.',
-    icon: '🏛️',
-    sortOrder: 2,
-    isVisible: true,
-  },
-  {
-    title: 'Construction & Integration',
-    body: 'We execute construction with premium materials and sustainable methods, integrating smart-hotel systems for seamless operations from day one.',
-    icon: '🏗️',
-    sortOrder: 3,
-    isVisible: true,
-  },
-];
-
 export const defaultAwardSections = [
   {
     title: '2025 Best of The Best Award',

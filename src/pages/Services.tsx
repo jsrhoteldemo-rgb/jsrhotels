@@ -13,7 +13,7 @@ const Services = () => {
 
   useViewTracker({ path: '/services' });
 
-  const visibleServices = servicesList.filter((service) => service.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
+  const visibleServices = (servicesList || []).filter((service) => service.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="page-wrapper inner-page-padding">

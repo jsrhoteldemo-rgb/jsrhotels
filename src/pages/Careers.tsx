@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { apiRequestFormData } from '../api/http';
 import { useViewTracker } from '../hooks/useViewTracker';
+import { usePublicData } from '../hooks/usePublicData';
+import type { JobOpportunity } from '../types/content';
+import { isValidEmail, isValidUsPhone, normalizeEmail } from '../utils/validation';
 import './Careers.css';
 
 interface CareerApplyResponse {
@@ -10,12 +13,14 @@ interface CareerApplyResponse {
   id: string;
 }
 
+const emptyOpportunities: JobOpportunity[] = [];
+
 const Careers = () => {
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     phone: '',
-    position: '',
+    jobOpportunityId: '',
     experienceYears: '',
     city: '',
     state: '',
@@ -26,20 +31,54 @@ const Careers = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useViewTracker({ path: '/careers' });
+  const { data: opportunities, loading: opportunitiesLoading } = usePublicData<JobOpportunity[]>({
+    path: '/api/public/careers/opportunities',
+    fallbackData: emptyOpportunities,
+  });
+  const jobs = opportunities || emptyOpportunities;
+
+  useEffect(() => {
+    if (!jobs.length) return;
+    const selectedExists = jobs.some((item) => item.id === form.jobOpportunityId);
+    if (!selectedExists) {
+      setForm((prev) => ({ ...prev, jobOpportunityId: jobs[0].id }));
+    }
+  }, [jobs, form.jobOpportunityId]);
+
+  const selectedOpportunity = useMemo(
+    () => jobs.find((item) => item.id === form.jobOpportunityId) || null,
+    [jobs, form.jobOpportunityId],
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!form.jobOpportunityId.trim()) {
+      setFeedback({ type: 'error', text: 'Please select a job opportunity before applying.' });
+      return;
+    }
 
     if (!resume) {
       setFeedback({ type: 'error', text: 'Please upload your resume before submitting.' });
       return;
     }
 
+    const normalizedEmail = normalizeEmail(form.email);
+    if (!isValidEmail(normalizedEmail)) {
+      setFeedback({ type: 'error', text: 'Please enter a valid email address before submitting.' });
+      return;
+    }
+
+    if (!isValidUsPhone(form.phone)) {
+      setFeedback({ type: 'error', text: 'Please enter a valid US phone number before submitting.' });
+      return;
+    }
+
     const payload = new FormData();
+    payload.append('jobOpportunityId', form.jobOpportunityId.trim());
     payload.append('fullName', form.fullName.trim());
-    payload.append('email', form.email.trim());
+    payload.append('email', normalizedEmail);
     payload.append('phone', form.phone.trim());
-    payload.append('position', form.position.trim());
     payload.append('city', form.city.trim());
     payload.append('state', form.state.trim());
     payload.append('coverLetter', form.coverLetter.trim());
@@ -58,7 +97,7 @@ const Careers = () => {
         fullName: '',
         email: '',
         phone: '',
-        position: '',
+        jobOpportunityId: jobs[0]?.id || '',
         experienceYears: '',
         city: '',
         state: '',
@@ -99,7 +138,30 @@ const Careers = () => {
             transition={{ duration: 0.7 }}
             className="careers-panel"
           >
-            <h2>Why Work With Us</h2>
+            <h2>Open Job Opportunities</h2>
+            {opportunitiesLoading ? (
+              <p>Loading open positions...</p>
+            ) : jobs.length === 0 ? (
+              <p>No active openings right now. Please check back soon.</p>
+            ) : (
+              <div className="careers-opportunity-list">
+                {jobs.map((job) => (
+                  <button
+                    key={job.id}
+                    type="button"
+                    className={`careers-opportunity-card ${form.jobOpportunityId === job.id ? 'active' : ''}`}
+                    onClick={() => setForm((prev) => ({ ...prev, jobOpportunityId: job.id }))}
+                  >
+                    <h3>{job.title}</h3>
+                    <p>
+                      {[job.department, job.employmentType].filter(Boolean).join(' | ') || 'General'}
+                    </p>
+                    <p>{[job.locationCity, job.locationState].filter(Boolean).join(', ') || 'USA'}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+            <h2 className="careers-why-heading">Why Work With Us</h2>
             <ul>
               <li>Growth opportunities across hotel operations and development.</li>
               <li>Collaborative teams with a strong guest-first culture.</li>
@@ -115,6 +177,39 @@ const Careers = () => {
             className="careers-form-wrap glass-effect"
           >
             <form className="careers-form" onSubmit={handleSubmit}>
+              <label>
+                <span>Selected Job Opportunity</span>
+                <select
+                  required
+                  value={form.jobOpportunityId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, jobOpportunityId: e.target.value }))}
+                  disabled={!jobs.length}
+                >
+                  <option value="">Select a job opportunity</option>
+                  {jobs.map((job) => (
+                    <option key={job.id} value={job.id}>
+                      {job.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {selectedOpportunity && (
+                <div className="careers-selected-opportunity">
+                  <p className="careers-selected-title">{selectedOpportunity.title}</p>
+                  <p className="careers-selected-meta">
+                    {[selectedOpportunity.department, selectedOpportunity.employmentType]
+                      .filter(Boolean)
+                      .join(' | ') || 'General'}
+                    {' • '}
+                    {[selectedOpportunity.locationCity, selectedOpportunity.locationState]
+                      .filter(Boolean)
+                      .join(', ') || 'USA'}
+                  </p>
+                  <p>{selectedOpportunity.description}</p>
+                </div>
+              )}
+
               <div className="careers-form-grid">
                 <label>
                   <span>Full Name</span>
@@ -143,15 +238,6 @@ const Careers = () => {
                     value={form.phone}
                     onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
                     placeholder="+1 555 123 4567"
-                  />
-                </label>
-                <label>
-                  <span>Position Applying For</span>
-                  <input
-                    required
-                    value={form.position}
-                    onChange={(e) => setForm((prev) => ({ ...prev, position: e.target.value }))}
-                    placeholder="Front Desk Manager"
                   />
                 </label>
                 <label>
@@ -205,7 +291,7 @@ const Careers = () => {
                 <p className={`careers-feedback ${feedback.type}`}>{feedback.text}</p>
               )}
 
-              <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              <button type="submit" className="btn-primary" disabled={isSubmitting || !jobs.length}>
                 {isSubmitting ? 'Submitting...' : 'Submit Application'}
               </button>
             </form>

@@ -1,6 +1,14 @@
 import { API_BASE_URL } from '../config/api';
 
 export const ADMIN_TOKEN_KEY = 'jsr_admin_token';
+export const ADMIN_LAST_ACTIVITY_KEY = 'jsr_admin_last_activity_at';
+export const ADMIN_SESSION_STARTED_KEY = 'jsr_admin_session_started_at';
+export const ADMIN_IDLE_TIMEOUT_MS = 1000 * 60 * 60; // 60 minutes
+
+export function touchAdminSession() {
+  if (!getAdminToken()) return;
+  localStorage.setItem(ADMIN_LAST_ACTIVITY_KEY, String(Date.now()));
+}
 
 export function getAdminToken() {
   return localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -9,10 +17,14 @@ export function getAdminToken() {
 export function setAdminToken(token: string | null) {
   if (!token) {
     localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_LAST_ACTIVITY_KEY);
+    localStorage.removeItem(ADMIN_SESSION_STARTED_KEY);
     return;
   }
 
   localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  localStorage.setItem(ADMIN_SESSION_STARTED_KEY, String(Date.now()));
+  touchAdminSession();
 }
 
 async function parseJsonPayload<T>(response: Response): Promise<T> {

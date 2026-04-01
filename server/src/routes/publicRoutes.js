@@ -5,6 +5,11 @@ import multer from 'multer';
 import { prisma } from '../db.js';
 import { env } from '../config/env.js';
 import { getUsCities, getUsStates } from '../constants/usData.js';
+import {
+  isValidEmail,
+  isValidUsPhone,
+  normalizeEmail,
+} from '../utils/validation.js';
 
 const router = Router();
 
@@ -84,11 +89,6 @@ router.get('/culture', async (req, res) => {
   res.json(sections);
 });
 
-router.get('/development', async (req, res) => {
-  const sections = await getContentPageSections('DEVELOPMENT');
-  res.json(sections);
-});
-
 router.get('/awards', async (req, res) => {
   const sections = await getContentPageSections('AWARDS');
   res.json(sections);
@@ -121,13 +121,21 @@ router.get('/contact', async (req, res) => {
 
 router.post('/contact-messages', async (req, res) => {
   const fullName = String(req.body.fullName || '').trim();
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   const phone = String(req.body.phone || '').trim();
   const subject = String(req.body.subject || '').trim();
   const message = String(req.body.message || '').trim();
 
   if (!fullName || !email || !message) {
     return res.status(400).json({ message: 'fullName, email, and message are required' });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  if (phone && !isValidUsPhone(phone)) {
+    return res.status(400).json({ message: 'Please enter a valid US phone number' });
   }
 
   const created = await prisma.contactMessage.create({
@@ -143,22 +151,48 @@ router.post('/contact-messages', async (req, res) => {
   return res.status(201).json({ success: true, id: created.id });
 });
 
+router.get('/careers/opportunities', async (req, res) => {
+  const opportunities = await prisma.jobOpportunity.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+  });
+
+  return res.json(opportunities);
+});
+
 router.post('/careers/apply', resumeUpload.single('resume'), async (req, res) => {
+  const jobOpportunityId = String(req.body.jobOpportunityId || '').trim();
   const fullName = String(req.body.fullName || '').trim();
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   const phone = String(req.body.phone || '').trim();
-  const position = String(req.body.position || '').trim();
   const city = String(req.body.city || '').trim();
   const state = String(req.body.state || '').trim();
   const coverLetter = String(req.body.coverLetter || '').trim();
   const experienceValue = String(req.body.experienceYears || '').trim();
 
-  if (!fullName || !email || !phone || !position) {
-    return res.status(400).json({ message: 'fullName, email, phone, and position are required' });
+  if (!jobOpportunityId || !fullName || !email || !phone) {
+    return res.status(400).json({ message: 'jobOpportunityId, fullName, email, and phone are required' });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  if (!isValidUsPhone(phone)) {
+    return res.status(400).json({ message: 'Please enter a valid US phone number' });
   }
 
   if (!req.file) {
     return res.status(400).json({ message: 'Resume file is required' });
+  }
+
+  const opportunity = await prisma.jobOpportunity.findUnique({
+    where: { id: jobOpportunityId },
+    select: { id: true, title: true, isActive: true },
+  });
+
+  if (!opportunity || !opportunity.isActive) {
+    return res.status(400).json({ message: 'Selected job opportunity is unavailable' });
   }
 
   let experienceYears = null;
@@ -172,12 +206,13 @@ router.post('/careers/apply', resumeUpload.single('resume'), async (req, res) =>
 
   const created = await prisma.careerApplication.create({
     data: {
+      jobOpportunityId: opportunity.id,
       fullName,
       email,
       phone,
       city: city || null,
       state: state || null,
-      position,
+      position: opportunity.title,
       experienceYears,
       coverLetter: coverLetter || null,
       resumeOriginalName: req.file.originalname,

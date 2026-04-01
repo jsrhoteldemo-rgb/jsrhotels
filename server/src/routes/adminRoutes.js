@@ -5,12 +5,47 @@ import { createCrudRouter } from '../utils/createCrudRouter.js';
 import { logActivity } from '../utils/activity.js';
 import { slugify } from '../utils/slug.js';
 import {
+  isStrongPassword,
+  isValidEmail,
+  isValidUsPhone,
+  normalizeEmail,
+} from '../utils/validation.js';
+import {
   defaultAwardSections,
   defaultCultureSections,
-  defaultDevelopmentSections,
 } from '../data/defaultSeedData.js';
 
 const router = Router();
+
+const HOME_BLOCK_TYPES_REQUIRING_IMAGE = new Set(['hero', 'intro', 'featured', 'leadership']);
+
+function normalizeHomeBlockType(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeAssetId(value) {
+  return String(value || '').trim() || null;
+}
+
+function validateHomeBlockImageAsset(payload, existing = null) {
+  const blockType = normalizeHomeBlockType(payload.type ?? existing?.type);
+  if (!HOME_BLOCK_TYPES_REQUIRING_IMAGE.has(blockType)) {
+    return null;
+  }
+
+  const imageAssetId =
+    payload.imageAssetId !== undefined
+      ? normalizeAssetId(payload.imageAssetId)
+      : normalizeAssetId(existing?.imageAssetId);
+
+  if (!imageAssetId) {
+    return 'imageAssetId is required for this home block section';
+  }
+
+  return null;
+}
 
 function sanitizeAdmin(admin) {
   return {
@@ -18,6 +53,8 @@ function sanitizeAdmin(admin) {
     fullName: admin.fullName,
     email: admin.email,
     isSystemAdmin: admin.isSystemAdmin,
+    profileImageAssetId: admin.profileImageAssetId || null,
+    profileImageAsset: admin.profileImageAsset || null,
     createdAt: admin.createdAt,
     updatedAt: admin.updatedAt,
   };
@@ -50,7 +87,6 @@ function registerContentPageSectionRoutes({ path, pageKey, entityType }) {
     if (items.length === 0) {
       const seedMap = {
         CULTURE: defaultCultureSections,
-        DEVELOPMENT: defaultDevelopmentSections,
         AWARDS: defaultAwardSections,
       };
       const defaults = seedMap[pageKey] || [];
@@ -256,30 +292,44 @@ router.get('/activity-logs', async (req, res) => {
 });
 
 router.get('/admins', async (req, res) => {
-  const admins = await prisma.admin.findMany({ orderBy: { createdAt: 'asc' } });
+  const admins = await prisma.admin.findMany({
+    include: { profileImageAsset: true },
+    orderBy: { createdAt: 'asc' },
+  });
   res.json(admins.map(sanitizeAdmin));
 });
 
 router.post('/admins', async (req, res) => {
-  const { fullName, email, password } = req.body;
+  const fullName = String(req.body.fullName || '').trim();
+  const email = normalizeEmail(req.body.email);
+  const password = String(req.body.password || '');
 
   if (!fullName || !email || !password) {
     return res.status(400).json({ message: 'fullName, email, and password are required' });
   }
 
-  const existing = await prisma.admin.findUnique({ where: { email: String(email).toLowerCase() } });
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ message: 'Password must be 8+ characters and include letters and numbers' });
+  }
+
+  const existing = await prisma.admin.findUnique({ where: { email } });
   if (existing) {
     return res.status(400).json({ message: 'Admin email already exists' });
   }
 
-  const passwordHash = await bcrypt.hash(String(password), 10);
+  const passwordHash = await bcrypt.hash(password, 10);
   const admin = await prisma.admin.create({
     data: {
-      fullName: String(fullName),
-      email: String(email).toLowerCase(),
+      fullName,
+      email,
       passwordHash,
       isSystemAdmin: false,
     },
+    include: { profileImageAsset: true },
   });
 
   await logActivity({
@@ -318,6 +368,114 @@ router.delete('/admins/:id', async (req, res) => {
     entityType: 'ADMIN',
     entityId: targetAdminId,
     beforeJson: sanitizeAdmin(target),
+  });
+
+  return res.json({ success: true });
+});
+
+router.get('/profile', async (req, res) => {
+  const admin = await prisma.admin.findUnique({
+    where: { id: req.admin.id },
+    include: { profileImageAsset: true },
+  });
+
+  if (!admin) {
+    return res.status(404).json({ message: 'Admin not found' });
+  }
+
+  return res.json(sanitizeAdmin(admin));
+});
+
+router.put('/profile', async (req, res) => {
+  const existing = await prisma.admin.findUnique({
+    where: { id: req.admin.id },
+    include: { profileImageAsset: true },
+  });
+
+  if (!existing) {
+    return res.status(404).json({ message: 'Admin not found' });
+  }
+
+  const fullName =
+    req.body.fullName !== undefined
+      ? String(req.body.fullName || '').trim()
+      : existing.fullName;
+  const profileImageAssetId =
+    req.body.profileImageAssetId !== undefined
+      ? String(req.body.profileImageAssetId || '').trim() || null
+      : existing.profileImageAssetId;
+
+  if (!fullName) {
+    return res.status(400).json({ message: 'fullName is required' });
+  }
+
+  if (req.body.email !== undefined) {
+    const requestedEmail = normalizeEmail(req.body.email);
+    if (requestedEmail !== existing.email) {
+      return res.status(400).json({ message: 'Email cannot be updated from profile settings' });
+    }
+  }
+
+  const updated = await prisma.admin.update({
+    where: { id: existing.id },
+    data: { fullName, profileImageAssetId },
+    include: { profileImageAsset: true },
+  });
+
+  await logActivity({
+    admin: req.admin,
+    action: 'UPDATE',
+    entityType: 'ADMIN_PROFILE',
+    entityId: updated.id,
+    beforeJson: sanitizeAdmin(existing),
+    afterJson: sanitizeAdmin(updated),
+  });
+
+  return res.json(sanitizeAdmin(updated));
+});
+
+router.put('/profile/password', async (req, res) => {
+  const currentPassword = String(req.body.currentPassword || '');
+  const newPassword = String(req.body.newPassword || '');
+  const confirmPassword = String(req.body.confirmPassword || '');
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return res.status(400).json({ message: 'currentPassword, newPassword, and confirmPassword are required' });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: 'New password and confirm password must match' });
+  }
+
+  if (!isStrongPassword(newPassword)) {
+    return res.status(400).json({ message: 'Password must be 8+ characters and include letters and numbers' });
+  }
+
+  const admin = await prisma.admin.findUnique({ where: { id: req.admin.id } });
+  if (!admin) {
+    return res.status(404).json({ message: 'Admin not found' });
+  }
+
+  const passwordMatches = await bcrypt.compare(currentPassword, admin.passwordHash);
+  if (!passwordMatches) {
+    return res.status(400).json({ message: 'Current password is incorrect' });
+  }
+
+  if (await bcrypt.compare(newPassword, admin.passwordHash)) {
+    return res.status(400).json({ message: 'New password must be different from current password' });
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.admin.update({
+    where: { id: admin.id },
+    data: { passwordHash },
+  });
+
+  await logActivity({
+    admin: req.admin,
+    action: 'UPDATE',
+    entityType: 'ADMIN_PASSWORD',
+    entityId: admin.id,
   });
 
   return res.json({ success: true });
@@ -379,6 +537,22 @@ router.put('/contact-info', async (req, res) => {
 
   if (!data.heading || !data.address || !data.generalEmail || !data.generalPhone) {
     return res.status(400).json({ message: 'heading, address, generalEmail, and generalPhone are required' });
+  }
+
+  if (!isValidEmail(data.generalEmail)) {
+    return res.status(400).json({ message: 'Please enter a valid general email address' });
+  }
+
+  if (!isValidUsPhone(data.generalPhone)) {
+    return res.status(400).json({ message: 'Please enter a valid general phone number' });
+  }
+
+  if (data.investmentEmail && !isValidEmail(data.investmentEmail)) {
+    return res.status(400).json({ message: 'Please enter a valid investment email address' });
+  }
+
+  if (data.investmentPhone && !isValidUsPhone(data.investmentPhone)) {
+    return res.status(400).json({ message: 'Please enter a valid investment phone number' });
   }
 
   const updated = existing
@@ -464,16 +638,140 @@ router.delete('/contact-messages/:id', async (req, res) => {
   return res.json({ success: true });
 });
 
+router.get('/career-opportunities', async (req, res) => {
+  const opportunities = await prisma.jobOpportunity.findMany({
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+  });
+  return res.json(opportunities);
+});
+
+router.post('/career-opportunities', async (req, res) => {
+  const payload = {
+    title: String(req.body.title || '').trim(),
+    department: String(req.body.department || '').trim() || null,
+    employmentType: String(req.body.employmentType || '').trim() || null,
+    locationCity: String(req.body.locationCity || '').trim() || null,
+    locationState: String(req.body.locationState || '').trim() || null,
+    description: String(req.body.description || '').trim(),
+    isActive: req.body.isActive ?? true,
+    sortOrder: Number(req.body.sortOrder || 0),
+  };
+
+  if (!payload.title || !payload.description) {
+    return res.status(400).json({ message: 'title and description are required' });
+  }
+
+  const created = await prisma.jobOpportunity.create({ data: payload });
+
+  await logActivity({
+    admin: req.admin,
+    action: 'CREATE',
+    entityType: 'CAREER_OPPORTUNITY',
+    entityId: created.id,
+    afterJson: created,
+  });
+
+  return res.status(201).json(created);
+});
+
+router.put('/career-opportunities/:id', async (req, res) => {
+  const existing = await prisma.jobOpportunity.findUnique({ where: { id: req.params.id } });
+  if (!existing) {
+    return res.status(404).json({ message: 'Career opportunity not found' });
+  }
+
+  const payload = {
+    title: req.body.title !== undefined ? String(req.body.title || '').trim() : existing.title,
+    department:
+      req.body.department !== undefined
+        ? String(req.body.department || '').trim() || null
+        : existing.department,
+    employmentType:
+      req.body.employmentType !== undefined
+        ? String(req.body.employmentType || '').trim() || null
+        : existing.employmentType,
+    locationCity:
+      req.body.locationCity !== undefined
+        ? String(req.body.locationCity || '').trim() || null
+        : existing.locationCity,
+    locationState:
+      req.body.locationState !== undefined
+        ? String(req.body.locationState || '').trim() || null
+        : existing.locationState,
+    description:
+      req.body.description !== undefined
+        ? String(req.body.description || '').trim()
+        : existing.description,
+    isActive: req.body.isActive !== undefined ? Boolean(req.body.isActive) : existing.isActive,
+    sortOrder: req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : existing.sortOrder,
+  };
+
+  if (!payload.title || !payload.description) {
+    return res.status(400).json({ message: 'title and description are required' });
+  }
+
+  const updated = await prisma.jobOpportunity.update({
+    where: { id: existing.id },
+    data: payload,
+  });
+
+  await logActivity({
+    admin: req.admin,
+    action: 'UPDATE',
+    entityType: 'CAREER_OPPORTUNITY',
+    entityId: updated.id,
+    beforeJson: existing,
+    afterJson: updated,
+  });
+
+  return res.json(updated);
+});
+
+router.delete('/career-opportunities/:id', async (req, res) => {
+  const existing = await prisma.jobOpportunity.findUnique({ where: { id: req.params.id } });
+  if (!existing) {
+    return res.status(404).json({ message: 'Career opportunity not found' });
+  }
+
+  await prisma.jobOpportunity.delete({ where: { id: existing.id } });
+
+  await logActivity({
+    admin: req.admin,
+    action: 'DELETE',
+    entityType: 'CAREER_OPPORTUNITY',
+    entityId: existing.id,
+    beforeJson: existing,
+  });
+
+  return res.json({ success: true });
+});
+
 router.get('/career-applications', async (req, res) => {
   const status = req.query.status ? String(req.query.status) : undefined;
+  const jobOpportunityId = req.query.jobOpportunityId ? String(req.query.jobOpportunityId) : undefined;
   const allowedStatuses = ['NEW', 'REVIEWING', 'SHORTLISTED', 'REJECTED', 'HIRED'];
   if (status && status !== 'ALL' && !allowedStatuses.includes(status)) {
     return res.status(400).json({ message: 'Invalid status for career application' });
   }
-  const where = status && status !== 'ALL' ? { status } : undefined;
+  const where = {
+    ...(status && status !== 'ALL' ? { status } : {}),
+    ...(jobOpportunityId && jobOpportunityId !== 'ALL' ? { jobOpportunityId } : {}),
+  };
 
   const applications = await prisma.careerApplication.findMany({
     where,
+    include: {
+      jobOpportunity: {
+        select: {
+          id: true,
+          title: true,
+          department: true,
+          employmentType: true,
+          locationCity: true,
+          locationState: true,
+        },
+      },
+    },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -833,6 +1131,20 @@ router.use('/home-blocks', createCrudRouter({
   model: 'homeBlock',
   entityType: 'HOME_BLOCK',
   include: { imageAsset: true },
+  preprocessCreate: (payload) => ({
+    ...payload,
+    type: normalizeHomeBlockType(payload.type),
+    imageAssetId: normalizeAssetId(payload.imageAssetId),
+  }),
+  preprocessUpdate: (payload) => ({
+    ...payload,
+    ...(payload.type !== undefined ? { type: normalizeHomeBlockType(payload.type) } : {}),
+    ...(payload.imageAssetId !== undefined
+      ? { imageAssetId: normalizeAssetId(payload.imageAssetId) }
+      : {}),
+  }),
+  validateCreate: (payload) => validateHomeBlockImageAsset(payload),
+  validateUpdate: (payload, existing) => validateHomeBlockImageAsset(payload, existing),
 }));
 
 router.use('/about-sections', createCrudRouter({
@@ -868,12 +1180,6 @@ registerContentPageSectionRoutes({
   path: '/culture-sections',
   pageKey: 'CULTURE',
   entityType: 'CULTURE_SECTION',
-});
-
-registerContentPageSectionRoutes({
-  path: '/development-sections',
-  pageKey: 'DEVELOPMENT',
-  entityType: 'DEVELOPMENT_SECTION',
 });
 
 registerContentPageSectionRoutes({

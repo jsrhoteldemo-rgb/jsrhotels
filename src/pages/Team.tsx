@@ -17,7 +17,7 @@ const Team = () => {
 
   useViewTracker({ path: '/team' });
 
-  const visibleMembers = members.filter((item) => item.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
+  const visibleMembers = (members || []).filter((item) => item.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="page-wrapper inner-page-padding">

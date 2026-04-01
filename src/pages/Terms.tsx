@@ -9,6 +9,9 @@ const Terms = () => {
     path: '/api/public/legal/terms',
     fallbackData: fallbackLegalDocuments.TERMS,
   });
+  const title = doc?.title || 'Terms & Conditions';
+  const updatedAt = doc?.updatedAt || null;
+  const content = doc?.content || '';
 
   useViewTracker({ path: '/terms' });
 
@@ -21,11 +24,13 @@ const Terms = () => {
           transition={{ duration: 0.8 }}
           style={{ marginBottom: '3rem' }}
         >
-          <h1 style={{ fontSize: '3rem', color: 'var(--color-accent)', marginBottom: '1rem' }}>{doc.title}</h1>
-          <p style={{ color: 'var(--color-text-muted)' }}>Last Updated: {new Date(doc.updatedAt).toLocaleDateString()}</p>
+          <h1 style={{ fontSize: '3rem', color: 'var(--color-accent)', marginBottom: '1rem' }}>{title}</h1>
+          <p style={{ color: 'var(--color-text-muted)' }}>
+            Last Updated: {updatedAt ? new Date(updatedAt).toLocaleDateString() : '-'}
+          </p>
         </motion.div>
         <div style={{ color: 'var(--color-text-main)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-          {doc.content}
+          {content}
         </div>
       </div>
     </div>

@@ -12,8 +12,8 @@ const Culture = () => {
   });
   useViewTracker({ path: '/culture' });
 
-  const visibleSections = sections.filter((item) => item.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
-  const intro = visibleSections[0]?.body || 'At JSR Hotels, our people are our greatest asset.';
+  const visibleSections = (sections || []).filter((item) => item.isVisible).sort((a, b) => a.sortOrder - b.sortOrder);
+  const intro = visibleSections[0]?.body || '';
 
   return (
     <div className="page-wrapper inner-page-padding">

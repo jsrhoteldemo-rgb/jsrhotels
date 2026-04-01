@@ -35,7 +35,7 @@ const Home = () => {
 
   useViewTracker({ path: '/' });
 
-  const sortedBlocks = [...blocks].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sortedBlocks = [...(blocks || [])].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const getBlock = (type: string) => sortedBlocks.find((block) => block.type === type && block.isVisible);
 

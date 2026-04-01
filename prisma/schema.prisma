@@ -43,7 +43,6 @@ enum CareerApplicationStatus {
 
 enum ContentPageKey {
   CULTURE
-  DEVELOPMENT
   AWARDS
 }
 
@@ -52,6 +51,8 @@ model Admin {
   fullName       String
   email          String        @unique
   passwordHash   String
+  profileImageAssetId String?
+  profileImageAsset MediaAsset? @relation("AdminProfileImage", fields: [profileImageAssetId], references: [id], onDelete: SetNull)
   isSystemAdmin  Boolean       @default(false)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -74,6 +75,7 @@ model MediaAsset {
   hotelBrands      HotelBrand[]
   coverProperties  PortfolioProperty[] @relation("PropertyCoverImage")
   propertyImages   PropertyImage[]
+  adminProfileImages Admin[]           @relation("AdminProfileImage")
   siteSettings     SiteSetting[]
   contentPageSections ContentPageSection[]
 }
@@ -217,6 +219,8 @@ model ContactMessage {
 
 model CareerApplication {
   id                 String                  @id @default(cuid())
+  jobOpportunityId   String?
+  jobOpportunity     JobOpportunity?         @relation(fields: [jobOpportunityId], references: [id], onDelete: SetNull)
   fullName           String
   email              String
   phone              String
@@ -236,6 +240,24 @@ model CareerApplication {
   updatedAt          DateTime                @updatedAt
 
   @@index([status, createdAt])
+  @@index([jobOpportunityId, status, createdAt])
+}
+
+model JobOpportunity {
+  id               String              @id @default(cuid())
+  title            String
+  department       String?
+  employmentType   String?
+  locationCity     String?
+  locationState    String?
+  description      String
+  isActive         Boolean             @default(true)
+  sortOrder        Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  applications     CareerApplication[]
+
+  @@index([isActive, sortOrder])
 }
 
 model ContentPageSection {

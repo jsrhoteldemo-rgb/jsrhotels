@@ -20,13 +20,28 @@ import {
   Menu,
   Settings,
   ShieldCheck,
+  User,
   Users,
   Wrench,
   X,
 } from 'lucide-react';
-import { apiRequest, getAdminToken, setAdminToken, uploadFile } from '../../api/http';
+import {
+  ADMIN_IDLE_TIMEOUT_MS,
+  ADMIN_LAST_ACTIVITY_KEY,
+  apiRequest,
+  getAdminToken,
+  setAdminToken,
+  touchAdminSession,
+  uploadFile,
+} from '../../api/http';
 import { resolveAssetUrl } from '../../config/api';
 import { noImagePlaceholder } from '../../data/fallbackContent';
+import {
+  isStrongPassword,
+  isValidEmail,
+  isValidUsPhone,
+  normalizeEmail,
+} from '../../utils/validation';
 import type {
   AboutSection,
   ContentPageSection,
@@ -42,11 +57,11 @@ import './AdminPanel.css';
 
 type AdminTabKey =
   | 'dashboard'
+  | 'profile'
   | 'admins'
   | 'home'
   | 'about'
   | 'culture'
-  | 'development'
   | 'awards'
   | 'services'
   | 'team'
@@ -65,6 +80,11 @@ interface AdminUser {
   fullName: string;
   email: string;
   isSystemAdmin: boolean;
+  profileImageAssetId?: string | null;
+  profileImageAsset?: {
+    id: string;
+    url: string;
+  } | null;
 }
 
 interface ActivityLog {
@@ -114,6 +134,20 @@ interface AdminNotice {
 type ContactMessageStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'ARCHIVED';
 type CareerApplicationStatus = 'NEW' | 'REVIEWING' | 'SHORTLISTED' | 'REJECTED' | 'HIRED';
 
+interface CareerOpportunityEntry {
+  id: string;
+  title: string;
+  department?: string | null;
+  employmentType?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  description: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface ContactMessageEntry {
   id: string;
   fullName: string;
@@ -129,6 +163,15 @@ interface ContactMessageEntry {
 
 interface CareerApplicationEntry {
   id: string;
+  jobOpportunityId?: string | null;
+  jobOpportunity?: {
+    id: string;
+    title: string;
+    department?: string | null;
+    employmentType?: string | null;
+    locationCity?: string | null;
+    locationState?: string | null;
+  } | null;
   fullName: string;
   email: string;
   phone: string;
@@ -195,7 +238,6 @@ const tabItems: Array<{ key: AdminTabKey; label: string; icon: typeof LayoutDash
   { key: 'about', label: 'About', icon: FileText },
   { key: 'culture', label: 'Culture', icon: FileText },
   { key: 'services', label: 'Services', icon: Wrench },
-  { key: 'development', label: 'Development', icon: Building2 },
   { key: 'awards', label: 'Awards', icon: FileBadge },
   { key: 'team', label: 'Meet Our Team', icon: Users },
   { key: 'brands', label: 'Hotel Brands', icon: Building2 },
@@ -209,6 +251,8 @@ const tabItems: Array<{ key: AdminTabKey; label: string; icon: typeof LayoutDash
   { key: 'admins', label: 'Admins', icon: ShieldCheck },
   { key: 'activity', label: 'Activity Logs', icon: Activity },
 ];
+
+const profileTabMeta = { key: 'profile' as const, label: 'Profile & Security', icon: User };
 
 const propertyStatusOptions: Array<{ value: PropertyFormState['status']; label: string }> = [
   { value: 'UNDER_CONSTRUCTION', label: 'Under Construction' },
@@ -775,8 +819,10 @@ function HomeBlockSectionManager({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setError(null);
 
     const clean = (value: unknown) => String(value || '').trim();
+    const imageAssetId = clean(form.imageAssetId);
     const imageUrl = clean(form.imageUrl);
     const pillarItems = (Array.isArray(form.pillarItems) ? form.pillarItems : [])
       .map((row) => asObject(row))
@@ -842,6 +888,13 @@ function HomeBlockSectionManager({
       ? items.find((item) => item.id === editId)?.sortOrder ?? config.defaultSortOrder
       : config.defaultSortOrder;
 
+    if (showImageFields && !imageAssetId) {
+      const message = `Image Asset ID is required for ${config.label}. Please upload/select an image before saving.`;
+      setError(message);
+      onFeedback?.('error', message);
+      return;
+    }
+
     const payload = {
       type: config.type,
       heading: clean(form.heading) || null,
@@ -850,7 +903,7 @@ function HomeBlockSectionManager({
       ctaText: clean(form.ctaText) || null,
       ctaUrl: clean(form.ctaUrl) || null,
       payload: Object.keys(payloadBody).length > 0 ? payloadBody : null,
-      imageAssetId: clean(form.imageAssetId) || null,
+      imageAssetId: imageAssetId || null,
       sortOrder: lockedSortOrder,
       isVisible: Boolean(form.isVisible),
     };
@@ -1428,6 +1481,19 @@ const AdminPanel = () => {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [newAdmin, setNewAdmin] = useState({ fullName: '', email: '', password: '' });
   const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    fullName: '',
+    email: '',
+    profileImageAssetId: '',
+    profileImagePreviewUrl: '/logo.jpg',
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [isProfileFormOpen, setIsProfileFormOpen] = useState(false);
+  const [isPasswordFormOpen, setIsPasswordFormOpen] = useState(false);
 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [activityAdminId, setActivityAdminId] = useState('ALL');
@@ -1460,7 +1526,9 @@ const AdminPanel = () => {
   const [contactMessageStatusFilter, setContactMessageStatusFilter] = useState<'ALL' | ContactMessageStatus>('ALL');
 
   const [careerApplications, setCareerApplications] = useState<CareerApplicationEntry[]>([]);
+  const [careerOpportunities, setCareerOpportunities] = useState<CareerOpportunityEntry[]>([]);
   const [careerStatusFilter, setCareerStatusFilter] = useState<'ALL' | CareerApplicationStatus>('ALL');
+  const [careerJobFilter, setCareerJobFilter] = useState<'ALL' | string>('ALL');
   const [moderationModal, setModerationModal] = useState<ModerationModalState | null>(null);
   const [isModalSubmitting, setIsModalSubmitting] = useState(false);
 
@@ -1481,9 +1549,15 @@ const AdminPanel = () => {
     [properties, selectedPropertyIdForGallery],
   );
 
-  const activeTab = tabItems.find((item) => item.key === tab) || tabItems[0];
+  const activeTab =
+    tab === 'profile'
+      ? profileTabMeta
+      : tabItems.find((item) => item.key === tab) || tabItems[0];
   const ActiveIcon = activeTab.icon;
   const brandDisplayName = siteForm.brandName || 'JSR Hotels';
+  const sidebarAvatarSrc = currentAdmin?.profileImageAsset?.url
+    ? resolveAssetUrl(currentAdmin.profileImageAsset.url)
+    : siteForm.logoPreviewUrl || '/logo.jpg';
 
   function pushNotice(type: AdminNotice['type'], message: string) {
     const clean = String(message || '').replace(/\s+/g, ' ').trim();
@@ -1533,6 +1607,19 @@ const AdminPanel = () => {
     }
   }
 
+  async function loadProfile() {
+    const profile = await apiRequest<AdminUser>('/api/admin/profile');
+    setProfileForm({
+      fullName: profile.fullName || '',
+      email: profile.email || '',
+      profileImageAssetId: profile.profileImageAssetId || '',
+      profileImagePreviewUrl: profile.profileImageAsset?.url
+        ? resolveAssetUrl(profile.profileImageAsset.url)
+        : '/logo.jpg',
+    });
+    setCurrentAdmin(profile);
+  }
+
   async function loadActivityLogs() {
     const query = buildQuery({
       adminId: activityAdminId === 'ALL' ? undefined : activityAdminId,
@@ -1564,10 +1651,15 @@ const AdminPanel = () => {
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
+    const email = normalizeEmail(loginEmail);
+    if (!isValidEmail(email)) {
+      setAuthError('Please enter a valid email address.');
+      return;
+    }
     try {
       const data = await apiRequest<{ token: string; admin: AdminUser }>('/api/admin/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+        body: JSON.stringify({ email, password: loginPassword }),
       });
       setAdminToken(data.token);
       setToken(data.token);
@@ -1586,11 +1678,26 @@ const AdminPanel = () => {
 
   async function handleAdminCreate(e: FormEvent) {
     e.preventDefault();
+    const normalizedEmail = normalizeEmail(newAdmin.email);
+
+    if (!isValidEmail(normalizedEmail)) {
+      pushNotice('error', 'Please enter a valid email address for the new admin.');
+      return;
+    }
+
+    if (!isStrongPassword(newAdmin.password)) {
+      pushNotice('error', 'Password must be 8+ characters and include letters and numbers.');
+      return;
+    }
 
     try {
       await apiRequest('/api/admin/admins', {
         method: 'POST',
-        body: JSON.stringify(newAdmin),
+        body: JSON.stringify({
+          ...newAdmin,
+          email: normalizedEmail,
+          fullName: String(newAdmin.fullName || '').trim(),
+        }),
       });
 
       setNewAdmin({ fullName: '', email: '', password: '' });
@@ -1600,6 +1707,93 @@ const AdminPanel = () => {
     } catch (err) {
       const message = (err as Error).message;
       pushNotice('error', message);
+    }
+  }
+
+  async function saveProfile(e: FormEvent) {
+    e.preventDefault();
+
+    const fullName = String(profileForm.fullName || '').trim();
+
+    if (!fullName) {
+      pushNotice('error', 'Full name is required.');
+      return;
+    }
+
+    try {
+      const updated = await apiRequest<AdminUser>('/api/admin/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          fullName,
+          profileImageAssetId: profileForm.profileImageAssetId || null,
+        }),
+      });
+
+      setCurrentAdmin(updated);
+      setProfileForm((prev) => ({
+        ...prev,
+        fullName: updated.fullName || '',
+        email: updated.email || '',
+        profileImageAssetId: updated.profileImageAssetId || '',
+        profileImagePreviewUrl: updated.profileImageAsset?.url
+          ? resolveAssetUrl(updated.profileImageAsset.url)
+          : prev.profileImagePreviewUrl,
+      }));
+      setIsProfileFormOpen(false);
+      pushNotice('success', 'Profile updated successfully.');
+      await Promise.all([loadAdmins(), loadActivityLogs()]);
+    } catch (err) {
+      pushNotice('error', (err as Error).message);
+    }
+  }
+
+  async function changePassword(e: FormEvent) {
+    e.preventDefault();
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      pushNotice('error', 'All password fields are required.');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      pushNotice('error', 'New password and confirm password must match.');
+      return;
+    }
+
+    if (!isStrongPassword(passwordForm.newPassword)) {
+      pushNotice('error', 'New password must be 8+ characters and include letters and numbers.');
+      return;
+    }
+
+    try {
+      await apiRequest('/api/admin/profile/password', {
+        method: 'PUT',
+        body: JSON.stringify(passwordForm),
+      });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setIsPasswordFormOpen(false);
+      pushNotice('success', 'Password changed successfully.');
+      await loadActivityLogs();
+    } catch (err) {
+      pushNotice('error', (err as Error).message);
+    }
+  }
+
+  async function uploadProfileImage(file: File | null) {
+    if (!file) return;
+    setUploadingFieldCount((prev) => prev + 1);
+    try {
+      const asset = await uploadFile(file);
+      setProfileForm((prev) => ({
+        ...prev,
+        profileImageAssetId: String(asset.id || ''),
+        profileImagePreviewUrl: resolveAssetUrl(String(asset.url || '')),
+      }));
+      pushNotice('success', 'Profile image uploaded successfully.');
+    } catch (err) {
+      pushNotice('error', (err as Error).message);
+    } finally {
+      setUploadingFieldCount((prev) => Math.max(0, prev - 1));
     }
   }
 
@@ -1794,11 +1988,37 @@ const AdminPanel = () => {
 
   async function saveContact(e: FormEvent) {
     e.preventDefault();
+    const generalEmail = normalizeEmail(contactForm.generalEmail);
+    const investmentEmail = normalizeEmail(contactForm.investmentEmail);
+
+    if (!isValidEmail(generalEmail)) {
+      pushNotice('error', 'Please enter a valid general email address.');
+      return;
+    }
+
+    if (!isValidUsPhone(contactForm.generalPhone)) {
+      pushNotice('error', 'Please enter a valid general phone number.');
+      return;
+    }
+
+    if (contactForm.investmentEmail && !isValidEmail(investmentEmail)) {
+      pushNotice('error', 'Please enter a valid investment email address.');
+      return;
+    }
+
+    if (contactForm.investmentPhone && !isValidUsPhone(contactForm.investmentPhone)) {
+      pushNotice('error', 'Please enter a valid investment phone number.');
+      return;
+    }
 
     try {
       await apiRequest('/api/admin/contact-info', {
         method: 'PUT',
-        body: JSON.stringify(contactForm),
+        body: JSON.stringify({
+          ...contactForm,
+          generalEmail,
+          investmentEmail: contactForm.investmentEmail ? investmentEmail : '',
+        }),
       });
 
       setIsContactFormOpen(false);
@@ -1849,9 +2069,15 @@ const AdminPanel = () => {
     }
   }
 
+  async function loadCareerOpportunities() {
+    const opportunities = await apiRequest<CareerOpportunityEntry[]>('/api/admin/career-opportunities');
+    setCareerOpportunities(opportunities);
+  }
+
   async function loadCareerApplications() {
     const query = buildQuery({
       status: careerStatusFilter === 'ALL' ? undefined : careerStatusFilter,
+      jobOpportunityId: careerJobFilter === 'ALL' ? undefined : careerJobFilter,
     });
     const applications = await apiRequest<CareerApplicationEntry[]>(`/api/admin/career-applications${query}`);
     setCareerApplications(applications);
@@ -1903,11 +2129,12 @@ const AdminPanel = () => {
 
   function openCareerApplicationModal(item: CareerApplicationEntry) {
     const location = [item.city, item.state].filter(Boolean).join(', ');
+    const roleTitle = item.jobOpportunity?.title || item.position;
     setModerationModal({
       kind: 'career',
       id: item.id,
       title: item.fullName,
-      subtitle: `${item.position}${location ? ` | ${location}` : ''}`,
+      subtitle: `${roleTitle}${location ? ` | ${location}` : ''}`,
       messageBody: item.coverLetter || 'No cover letter provided.',
       status: item.status,
       adminNotes: item.adminNotes || '',
@@ -2032,11 +2259,13 @@ const AdminPanel = () => {
   async function bootstrap() {
     await Promise.all([
       loadAdminDashboard(),
+      loadProfile(),
       loadAdmins(),
       loadActivityLogs(),
       loadPropertyData(),
       loadContact(),
       loadContactMessages(),
+      loadCareerOpportunities(),
       loadCareerApplications(),
       loadSiteSettings(),
       loadLegalDocs(),
@@ -2099,6 +2328,78 @@ const AdminPanel = () => {
   }, [token]);
 
   useEffect(() => {
+    if (!token) return;
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'click',
+      'mousemove',
+      'keydown',
+      'scroll',
+      'touchstart',
+    ];
+    let recentlyTouchedAt = 0;
+    let timedOut = false;
+
+    const markActivity = () => {
+      const now = Date.now();
+      if (now - recentlyTouchedAt < 10_000) return;
+      recentlyTouchedAt = now;
+      touchAdminSession();
+    };
+
+    const showTimeoutToast = () => {
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+      setToast({
+        type: 'info',
+        message: 'Session timed out due to inactivity. Please sign in again.',
+      });
+      toastTimeoutRef.current = window.setTimeout(() => {
+        setToast(null);
+        toastTimeoutRef.current = null;
+      }, 5000);
+    };
+
+    const endSession = () => {
+      if (timedOut) return;
+      timedOut = true;
+      showTimeoutToast();
+      setAdminToken(null);
+      setToken(null);
+      setCurrentAdmin(null);
+      setTab('dashboard');
+      setAuthError('Session expired due to inactivity. Please sign in again.');
+    };
+
+    const checkIdleTimeout = () => {
+      const rawLastActivity = localStorage.getItem(ADMIN_LAST_ACTIVITY_KEY);
+      const lastActivity = rawLastActivity ? Number(rawLastActivity) : NaN;
+      if (!Number.isFinite(lastActivity)) {
+        touchAdminSession();
+        return;
+      }
+      if (Date.now() - lastActivity > ADMIN_IDLE_TIMEOUT_MS) {
+        endSession();
+      }
+    };
+
+    markActivity();
+    for (const eventName of activityEvents) {
+      window.addEventListener(eventName, markActivity, { passive: true });
+    }
+
+    const intervalId = window.setInterval(checkIdleTimeout, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+      for (const eventName of activityEvents) {
+        window.removeEventListener(eventName, markActivity);
+      }
+    };
+  }, [token]);
+
+  useEffect(() => {
     const stateCode = String(propertyForm.state || '');
     if (stateCode) {
       loadCitiesByState(stateCode).catch(() => setCities([]));
@@ -2127,7 +2428,15 @@ const AdminPanel = () => {
     if (!token) return;
     loadCareerApplications().catch((err) => pushNotice('error', (err as Error).message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [careerStatusFilter]);
+  }, [careerStatusFilter, careerJobFilter]);
+
+  useEffect(() => {
+    if (careerJobFilter === 'ALL') return;
+    const exists = careerOpportunities.some((item) => item.id === careerJobFilter);
+    if (!exists) {
+      setCareerJobFilter('ALL');
+    }
+  }, [careerJobFilter, careerOpportunities]);
 
   useEffect(() => {
     return () => {
@@ -2273,10 +2582,28 @@ const AdminPanel = () => {
 
           <div className="admin-sidebar-footer">
             {currentAdmin && (
-              <div className="admin-user-pill">
-                <ShieldCheck size={16} />
-                <span>{currentAdmin.fullName}</span>
-              </div>
+              <button
+                type="button"
+                className={`admin-user-pill admin-profile-shortcut ${tab === 'profile' ? 'active' : ''}`}
+                aria-label="Open profile and security settings"
+                onClick={() => {
+                  setTab('profile');
+                  setMobileNavOpen(false);
+                }}
+              >
+                <img
+                  src={sidebarAvatarSrc}
+                  alt={currentAdmin.fullName}
+                  className="admin-user-avatar"
+                  onError={(event) => {
+                    event.currentTarget.src = '/logo.jpg';
+                  }}
+                />
+                <span className="admin-user-meta">
+                  <span className="admin-user-name">{currentAdmin.fullName}</span>
+                  <span className="admin-user-subtitle">Profile &amp; Security</span>
+                </span>
+              </button>
             )}
             <button className="btn-secondary" onClick={handleLogout}>
               <LogOut size={16} />
@@ -2384,6 +2711,194 @@ const AdminPanel = () => {
                           </li>
                         ))}
                       </ul>
+                    )}
+                  </article>
+                </div>
+              </section>
+            )}
+
+            {tab === 'profile' && (
+              <section className="admin-section">
+                <div className="admin-section-head split">
+                  <div>
+                    <h2>Profile & Security Settings</h2>
+                    <p>Manage your profile information and password from this section.</p>
+                  </div>
+                </div>
+
+                <div className="admin-profile-grid">
+                  <article className="admin-profile-card">
+                    <p className="admin-profile-section-label">Profile Settings</p>
+                    <div className="admin-section-head split">
+                      <div>
+                        <h3>Profile Details</h3>
+                        <p>Update your display name and profile picture. Login email is read-only.</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => setIsProfileFormOpen((prev) => !prev)}
+                      >
+                        {isProfileFormOpen ? 'Close Form' : 'Edit Profile'}
+                      </button>
+                    </div>
+
+                    <div className="admin-profile-preview">
+                      <img
+                        src={profileForm.profileImagePreviewUrl || '/logo.jpg'}
+                        alt={profileForm.fullName || 'Admin profile'}
+                        className="admin-profile-avatar"
+                        onError={(event) => {
+                          event.currentTarget.src = '/logo.jpg';
+                        }}
+                      />
+                      <div>
+                        <h4>{profileForm.fullName || currentAdmin?.fullName || 'Admin'}</h4>
+                        <p>{profileForm.email || currentAdmin?.email || '-'}</p>
+                      </div>
+                    </div>
+
+                    {isProfileFormOpen && (
+                      <form className="admin-form admin-form-panel" onSubmit={saveProfile}>
+                        <label>
+                          <span>Full Name</span>
+                          <input
+                            value={profileForm.fullName}
+                            onChange={(e) =>
+                              setProfileForm((prev) => ({ ...prev, fullName: e.target.value }))
+                            }
+                            placeholder="Your full name"
+                          />
+                        </label>
+                        <label>
+                          <span>Login Email (Read Only)</span>
+                          <input
+                            type="email"
+                            value={profileForm.email}
+                            readOnly
+                            disabled
+                          />
+                        </label>
+                        <div className="inline-group">
+                          <label>
+                            <span>Profile Image Asset ID</span>
+                            <input
+                              value={profileForm.profileImageAssetId}
+                              onChange={(e) =>
+                                setProfileForm((prev) => ({
+                                  ...prev,
+                                  profileImageAssetId: e.target.value,
+                                }))
+                              }
+                              placeholder="Asset ID"
+                            />
+                          </label>
+                          <label>
+                            <span>Upload Profile Image</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => uploadProfileImage(e.target.files?.[0] || null)}
+                            />
+                          </label>
+                        </div>
+                        <div className="admin-form-actions">
+                          <button type="submit" className="btn-primary" disabled={uploadingFieldCount > 0}>
+                            Save Profile
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => setIsProfileFormOpen(false)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </article>
+
+                  <article className="admin-profile-card">
+                    <p className="admin-profile-section-label">Security Settings</p>
+                    <div className="admin-section-head split">
+                      <div>
+                        <h3>Change Password</h3>
+                        <p>Password must be at least 8 characters with letters and numbers.</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => setIsPasswordFormOpen((prev) => !prev)}
+                      >
+                        {isPasswordFormOpen ? 'Close Form' : 'Change Password'}
+                      </button>
+                    </div>
+
+                    {isPasswordFormOpen && (
+                      <form className="admin-form admin-form-panel" onSubmit={changePassword}>
+                        <label>
+                          <span>Current Password</span>
+                          <input
+                            type="password"
+                            value={passwordForm.currentPassword}
+                            onChange={(e) =>
+                              setPasswordForm((prev) => ({
+                                ...prev,
+                                currentPassword: e.target.value,
+                              }))
+                            }
+                            placeholder="Current password"
+                          />
+                        </label>
+                        <label>
+                          <span>New Password</span>
+                          <input
+                            type="password"
+                            value={passwordForm.newPassword}
+                            onChange={(e) =>
+                              setPasswordForm((prev) => ({
+                                ...prev,
+                                newPassword: e.target.value,
+                              }))
+                            }
+                            placeholder="New password"
+                          />
+                        </label>
+                        <label>
+                          <span>Confirm New Password</span>
+                          <input
+                            type="password"
+                            value={passwordForm.confirmPassword}
+                            onChange={(e) =>
+                              setPasswordForm((prev) => ({
+                                ...prev,
+                                confirmPassword: e.target.value,
+                              }))
+                            }
+                            placeholder="Confirm new password"
+                          />
+                        </label>
+
+                        <div className="admin-form-actions">
+                          <button type="submit" className="btn-primary">
+                            Update Password
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => {
+                              setIsPasswordFormOpen(false);
+                              setPasswordForm({
+                                currentPassword: '',
+                                newPassword: '',
+                                confirmPassword: '',
+                              });
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
                     )}
                   </article>
                 </div>
@@ -2752,120 +3267,6 @@ const AdminPanel = () => {
                       <span>Icon (optional)</span>
                       <input
                         placeholder="e.g. 🌿"
-                        value={String(form.icon || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, icon: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <div className="inline-group">
-                      <label>
-                        <span>Image Asset ID</span>
-                        <input
-                          placeholder="Asset ID"
-                          value={String(form.imageAssetId || '')}
-                          onChange={(e) =>
-                            setForm((prev) => ({ ...prev, imageAssetId: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Upload Image</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={async (e) =>
-                            uploadForField(
-                              setForm,
-                              'imageAssetId',
-                              e.target.files?.[0] || null,
-                            )
-                          }
-                        />
-                      </label>
-                    </div>
-                    <div className="inline-group">
-                      <label>
-                        <span>Sort Order</span>
-                        <input
-                          type="number"
-                          value={Number(form.sortOrder || 0)}
-                          onChange={(e) =>
-                            setForm((prev) => ({ ...prev, sortOrder: Number(e.target.value) }))
-                          }
-                        />
-                      </label>
-                      <label className="toggle-label">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(form.isVisible)}
-                          onChange={(e) =>
-                            setForm((prev) => ({ ...prev, isVisible: e.target.checked }))
-                          }
-                        />
-                        <span>Visible</span>
-                      </label>
-                    </div>
-                  </>
-                )}
-                toPayload={(form) => ({
-                  title: form.title,
-                  body: form.body,
-                  icon: form.icon || null,
-                  imageAssetId: form.imageAssetId || null,
-                  sortOrder: Number(form.sortOrder || 0),
-                  isVisible: Boolean(form.isVisible),
-                })}
-                summary={(item) => (
-                  <>
-                    <h3>{item.title}</h3>
-                    <p className="admin-item-meta">{item.body.slice(0, 160)}...</p>
-                  </>
-                )}
-              />
-            )}
-
-            {tab === 'development' && (
-              <GenericListManager<ContentPageSection>
-                title="Development Sections"
-                subtitle="Manage dynamic sections for the Development page."
-                entityLabel="Development section"
-                onFeedback={(type, message) => pushNotice(type, message)}
-                endpoint="/api/admin/development-sections"
-                defaults={{
-                  title: '',
-                  body: '',
-                  icon: '',
-                  imageAssetId: '',
-                  sortOrder: 0,
-                  isVisible: true,
-                }}
-                renderFields={(form, setForm) => (
-                  <>
-                    <label>
-                      <span>Title</span>
-                      <input
-                        placeholder="Section title"
-                        value={String(form.title || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, title: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Description</span>
-                      <textarea
-                        placeholder="Section description"
-                        value={String(form.body || '')}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, body: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Icon (optional)</span>
-                      <input
-                        placeholder="e.g. 🏗️"
                         value={String(form.icon || '')}
                         onChange={(e) =>
                           setForm((prev) => ({ ...prev, icon: e.target.value }))
@@ -3990,92 +4391,232 @@ const AdminPanel = () => {
             )}
 
             {tab === 'careers' && (
-              <section className="admin-section">
-                <div className="admin-section-head split">
-                  <div>
-                    <h2>Career Applications</h2>
-                    <p>Review and manage applications submitted from the Careers page.</p>
-                  </div>
-                  <label>
-                    <span>Status Filter</span>
-                    <select
-                      value={careerStatusFilter}
-                      onChange={(event) =>
-                        setCareerStatusFilter(event.target.value as 'ALL' | CareerApplicationStatus)
-                      }
-                    >
-                      <option value="ALL">All Statuses</option>
-                      {careerStatusOptions.map((status) => (
-                        <option key={status} value={status}>
-                          {formatSectionLabel(status)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+              <>
+                <GenericListManager<CareerOpportunityEntry>
+                  title="Job Opportunities"
+                  subtitle="Create and manage active job postings shown on the Careers page."
+                  entityLabel="Job Opportunity"
+                  endpoint="/api/admin/career-opportunities"
+                  onFeedback={(type, message) => {
+                    pushNotice(type, message);
+                    loadCareerOpportunities().catch((err) => pushNotice('error', (err as Error).message));
+                  }}
+                  defaults={{
+                    title: '',
+                    department: '',
+                    employmentType: '',
+                    locationCity: '',
+                    locationState: '',
+                    description: '',
+                    sortOrder: 0,
+                    isActive: true,
+                  }}
+                  renderFields={(form, setForm) => (
+                    <>
+                      <label>
+                        <span>Job Title</span>
+                        <input
+                          value={String(form.title || '')}
+                          onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                          placeholder="Front Desk Manager"
+                        />
+                      </label>
+                      <div className="admin-form-grid two">
+                        <label>
+                          <span>Department</span>
+                          <input
+                            value={String(form.department || '')}
+                            onChange={(e) => setForm((prev) => ({ ...prev, department: e.target.value }))}
+                            placeholder="Operations"
+                          />
+                        </label>
+                        <label>
+                          <span>Employment Type</span>
+                          <input
+                            value={String(form.employmentType || '')}
+                            onChange={(e) => setForm((prev) => ({ ...prev, employmentType: e.target.value }))}
+                            placeholder="Full-time"
+                          />
+                        </label>
+                      </div>
+                      <div className="admin-form-grid two">
+                        <label>
+                          <span>City</span>
+                          <input
+                            value={String(form.locationCity || '')}
+                            onChange={(e) => setForm((prev) => ({ ...prev, locationCity: e.target.value }))}
+                            placeholder="Los Angeles"
+                          />
+                        </label>
+                        <label>
+                          <span>State</span>
+                          <input
+                            value={String(form.locationState || '')}
+                            onChange={(e) => setForm((prev) => ({ ...prev, locationState: e.target.value }))}
+                            placeholder="CA"
+                          />
+                        </label>
+                      </div>
+                      <label>
+                        <span>Job Description</span>
+                        <textarea
+                          rows={4}
+                          value={String(form.description || '')}
+                          onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                          placeholder="Role responsibilities and requirements."
+                        />
+                      </label>
+                      <div className="inline-group">
+                        <label>
+                          <span>Sort Order</span>
+                          <input
+                            type="number"
+                            value={Number(form.sortOrder || 0)}
+                            onChange={(e) =>
+                              setForm((prev) => ({ ...prev, sortOrder: Number(e.target.value) }))
+                            }
+                          />
+                        </label>
+                        <label className="toggle-label">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(form.isActive)}
+                            onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                          />
+                          <span>Active</span>
+                        </label>
+                      </div>
+                    </>
+                  )}
+                  toPayload={(form) => ({
+                    title: String(form.title || '').trim(),
+                    department: String(form.department || '').trim() || null,
+                    employmentType: String(form.employmentType || '').trim() || null,
+                    locationCity: String(form.locationCity || '').trim() || null,
+                    locationState: String(form.locationState || '').trim() || null,
+                    description: String(form.description || '').trim(),
+                    sortOrder: Number(form.sortOrder || 0),
+                    isActive: Boolean(form.isActive),
+                  })}
+                  summary={(item) => (
+                    <>
+                      <h3>{item.title}</h3>
+                      <p className="admin-item-meta">
+                        {[item.department, item.employmentType].filter(Boolean).join(' | ') || 'No meta set'}
+                      </p>
+                      <p className="admin-item-meta">
+                        {[item.locationCity, item.locationState].filter(Boolean).join(', ') || 'Location not set'}
+                      </p>
+                      <p className="admin-item-meta">
+                        Status: {item.isActive ? 'Active' : 'Inactive'}
+                      </p>
+                    </>
+                  )}
+                />
 
-                {careerApplications.length === 0 ? (
-                  <p className="admin-empty">No career applications found.</p>
-                ) : (
-                  <div className="admin-list">
-                    {careerApplications.map((item) => {
-                      return (
-                        <article
-                          key={item.id}
-                          className={`admin-list-item admin-message-item ${statusToneClass(item.status)}`}
+                <section className="admin-section">
+                  <div className="admin-section-head split">
+                    <div>
+                      <h2>Career Applications</h2>
+                      <p>Review and manage applications submitted from the Careers page.</p>
+                    </div>
+                    <div className="inline-group compact">
+                      <label>
+                        <span>Job Filter</span>
+                        <select
+                          value={careerJobFilter}
+                          onChange={(event) => setCareerJobFilter(event.target.value)}
                         >
-                          <div className="admin-item-main">
-                            <h3>{item.fullName}</h3>
-                            <p className="admin-item-meta">
-                              {item.email} | {item.phone}
-                            </p>
-                            <p className="admin-item-meta">
-                              Position: {item.position}
-                              {item.experienceYears !== null && item.experienceYears !== undefined
-                                ? ` | ${item.experienceYears} year(s)`
-                                : ''}
-                            </p>
-                            <p className="admin-item-meta">
-                              Location: {[item.city, item.state].filter(Boolean).join(', ') || '-'} |{' '}
-                              {new Date(item.createdAt).toLocaleString()}
-                            </p>
-                            <p className="admin-item-meta">
-                              Resume:{' '}
-                              <a
-                                className="admin-link"
-                                href={resolveAssetUrl(item.resumeUrl)}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                {item.resumeOriginalName}
-                              </a>{' '}
-                              ({formatFileSize(item.resumeSize)})
-                            </p>
-                            {item.coverLetter && (
-                              <p className="admin-message-body">{item.coverLetter}</p>
-                            )}
-                            <div className="admin-chip-row">
-                              <span className={`admin-pill ${statusToneClass(item.status)}`}>
-                                {formatSectionLabel(item.status)}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="admin-item-actions">
-                            <button
-                              type="button"
-                              className="btn-secondary btn-manage"
-                              onClick={() => openCareerApplicationModal(item)}
-                            >
-                              Manage
-                            </button>
-                          </div>
-                        </article>
-                      );
-                    })}
+                          <option value="ALL">All Jobs</option>
+                          {careerOpportunities.map((job) => (
+                            <option key={job.id} value={job.id}>
+                              {job.title}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Status Filter</span>
+                        <select
+                          value={careerStatusFilter}
+                          onChange={(event) =>
+                            setCareerStatusFilter(event.target.value as 'ALL' | CareerApplicationStatus)
+                          }
+                        >
+                          <option value="ALL">All Statuses</option>
+                          {careerStatusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {formatSectionLabel(status)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
-                )}
-              </section>
+
+                  {careerApplications.length === 0 ? (
+                    <p className="admin-empty">No career applications found.</p>
+                  ) : (
+                    <div className="admin-list">
+                      {careerApplications.map((item) => {
+                        return (
+                          <article
+                            key={item.id}
+                            className={`admin-list-item admin-message-item ${statusToneClass(item.status)}`}
+                          >
+                            <div className="admin-item-main">
+                              <h3>{item.fullName}</h3>
+                              <p className="admin-item-meta">
+                                {item.email} | {item.phone}
+                              </p>
+                              <p className="admin-item-meta">
+                                Position: {item.jobOpportunity?.title || item.position}
+                                {item.experienceYears !== null && item.experienceYears !== undefined
+                                  ? ` | ${item.experienceYears} year(s)`
+                                  : ''}
+                              </p>
+                              <p className="admin-item-meta">
+                                Location: {[item.city, item.state].filter(Boolean).join(', ') || '-'} |{' '}
+                                {new Date(item.createdAt).toLocaleString()}
+                              </p>
+                              <p className="admin-item-meta">
+                                Resume:{' '}
+                                <a
+                                  className="admin-link"
+                                  href={resolveAssetUrl(item.resumeUrl)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {item.resumeOriginalName}
+                                </a>{' '}
+                                ({formatFileSize(item.resumeSize)})
+                              </p>
+                              {item.coverLetter && (
+                                <p className="admin-message-body">{item.coverLetter}</p>
+                              )}
+                              <div className="admin-chip-row">
+                                <span className={`admin-pill ${statusToneClass(item.status)}`}>
+                                  {formatSectionLabel(item.status)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="admin-item-actions">
+                              <button
+                                type="button"
+                                className="btn-secondary btn-manage"
+                                onClick={() => openCareerApplicationModal(item)}
+                              >
+                                Manage
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              </>
             )}
 
             {tab === 'legal' && (

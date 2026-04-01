@@ -32,7 +32,7 @@ export interface AboutSection {
 
 export interface ContentPageSection {
   id: string;
-  pageKey: 'CULTURE' | 'DEVELOPMENT' | 'AWARDS';
+  pageKey: 'CULTURE' | 'AWARDS';
   title: string;
   body: string;
   icon?: string | null;
@@ -136,4 +136,18 @@ export interface SiteSetting {
   brandName: string;
   footerTagline?: string | null;
   logoAsset?: MediaAsset | null;
+}
+
+export interface JobOpportunity {
+  id: string;
+  title: string;
+  department?: string | null;
+  employmentType?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  description: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }

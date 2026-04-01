@@ -12,7 +12,10 @@ export async function requireAuth(req, res, next) {
     }
 
     const payload = jwt.verify(token, env.jwtSecret);
-    const admin = await prisma.admin.findUnique({ where: { id: payload.sub } });
+    const admin = await prisma.admin.findUnique({
+      where: { id: payload.sub },
+      include: { profileImageAsset: true },
+    });
 
     if (!admin) {
       return res.status(401).json({ message: 'Invalid auth token' });
@@ -23,6 +26,8 @@ export async function requireAuth(req, res, next) {
       fullName: admin.fullName,
       email: admin.email,
       isSystemAdmin: admin.isSystemAdmin,
+      profileImageAssetId: admin.profileImageAssetId || null,
+      profileImageAsset: admin.profileImageAsset || null,
     };
 
     next();
