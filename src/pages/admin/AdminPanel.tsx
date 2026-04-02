@@ -89,6 +89,7 @@ interface AdminUser {
 
 interface ActivityLog {
   id: string;
+  adminId: string;
   adminFullName: string;
   action: string;
   entityType: string;
@@ -385,6 +386,41 @@ function dateValue(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function isValidIsoDate(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+function normalizeNewsDateInput(value: string) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  if (isValidIsoDate(trimmed)) return trimmed;
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return dateValue(parsed);
+}
+
+function formatNewsDateLabelFromIso(isoDate: string) {
+  if (!isValidIsoDate(isoDate)) return isoDate;
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  });
 }
 
 function formatFileSize(bytes: number) {
@@ -755,7 +791,7 @@ function getHomeBlockFormFromItem(item: HomeBlock) {
     newsItems: readObjectItems(
       payload.items,
       (row) => ({
-        date: asText(row.date),
+        date: normalizeNewsDateInput(asText(row.date)),
         title: asText(row.title),
         desc: asText(row.desc),
       }),
@@ -842,7 +878,7 @@ function HomeBlockSectionManager({
     const featureItems = (Array.isArray(form.featureItems) ? form.featureItems : [])
       .map((item) => clean(item))
       .filter(Boolean);
-    const newsItems = (Array.isArray(form.newsItems) ? form.newsItems : [])
+    const rawNewsItems = (Array.isArray(form.newsItems) ? form.newsItems : [])
       .map((row) => asObject(row))
       .map((row) => ({
         date: clean(row.date),
@@ -850,6 +886,29 @@ function HomeBlockSectionManager({
         desc: clean(row.desc),
       }))
       .filter((row) => row.date || row.title || row.desc);
+    const newsItems: Array<{ date: string; title: string; desc: string }> = [];
+
+    for (const [index, row] of rawNewsItems.entries()) {
+      if ((row.title || row.desc) && !row.date) {
+        const message = `News item ${index + 1}: date is required when title or description is filled.`;
+        setError(message);
+        onFeedback?.('error', message);
+        return;
+      }
+
+      if (row.date && !isValidIsoDate(row.date)) {
+        const message = `News item ${index + 1}: please select a valid date.`;
+        setError(message);
+        onFeedback?.('error', message);
+        return;
+      }
+
+      newsItems.push({
+        date: row.date ? formatNewsDateLabelFromIso(row.date) : '',
+        title: row.title,
+        desc: row.desc,
+      });
+    }
     const accoladeItems = (Array.isArray(form.accoladeItems) ? form.accoladeItems : [])
       .map((row) => asObject(row))
       .map((row) => ({
@@ -1284,7 +1343,7 @@ function HomeBlockSectionManager({
                     <label>
                       <span>Date</span>
                       <input
-                        placeholder="Oct 24, 2026"
+                        type="date"
                         value={asText(row.date)}
                         onChange={(e) =>
                           setForm((prev) => ({
@@ -1498,6 +1557,7 @@ const AdminPanel = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [activityAdminId, setActivityAdminId] = useState('ALL');
   const [activityAction, setActivityAction] = useState('ALL');
+  const activityRequestSeqRef = useRef(0);
 
   const [brands, setBrands] = useState<HotelBrand[]>([]);
   const [properties, setProperties] = useState<PortfolioProperty[]>([]);
@@ -1620,13 +1680,26 @@ const AdminPanel = () => {
     setCurrentAdmin(profile);
   }
 
-  async function loadActivityLogs() {
+  async function loadActivityLogs(filters?: { adminId?: string; action?: string }) {
+    const selectedAdminId = filters?.adminId ?? activityAdminId;
+    const selectedAction = filters?.action ?? activityAction;
     const query = buildQuery({
-      adminId: activityAdminId === 'ALL' ? undefined : activityAdminId,
-      action: activityAction === 'ALL' ? undefined : activityAction,
+      adminId: selectedAdminId === 'ALL' ? undefined : selectedAdminId,
+      action: selectedAction === 'ALL' ? undefined : selectedAction,
     });
+    const requestSeq = ++activityRequestSeqRef.current;
     const logsData = await apiRequest<ActivityLog[]>(`/api/admin/activity-logs${query}`);
-    setActivityLogs(logsData);
+
+    if (requestSeq !== activityRequestSeqRef.current) {
+      return;
+    }
+
+    // Keep UI filtering deterministic even if an upstream API ignores query params.
+    const filteredLogs = logsData
+      .filter((log) => selectedAdminId === 'ALL' || log.adminId === selectedAdminId)
+      .filter((log) => selectedAction === 'ALL' || log.action === selectedAction);
+
+    setActivityLogs(filteredLogs);
   }
 
   async function loadPropertyData() {
@@ -2414,7 +2487,9 @@ const AdminPanel = () => {
 
   useEffect(() => {
     if (!token) return;
-    loadActivityLogs().catch((err) => pushNotice('error', (err as Error).message));
+    loadActivityLogs({ adminId: activityAdminId, action: activityAction }).catch((err) =>
+      pushNotice('error', (err as Error).message),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activityAdminId, activityAction]);
 
@@ -4874,6 +4949,7 @@ const AdminPanel = () => {
                         <option value="CREATE">Create</option>
                         <option value="UPDATE">Update</option>
                         <option value="DELETE">Delete</option>
+                        <option value="LOGIN">Login</option>
                       </select>
                     </label>
                   </div>
