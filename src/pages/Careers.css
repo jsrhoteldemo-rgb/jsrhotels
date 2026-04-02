@@ -37,7 +37,9 @@
 }
 
 .careers-why-heading {
-  margin-top: 1.15rem;
+  margin: 1.75rem 0 0.8rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .careers-panel ul {

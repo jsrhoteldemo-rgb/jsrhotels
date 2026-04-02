@@ -1,0 +1,21 @@
+.terms-header {
+  margin-bottom: 2.1rem;
+}
+
+.terms-title {
+  margin: 0 0 1.15rem;
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--color-accent);
+}
+
+.terms-updated-at {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.terms-content {
+  color: var(--color-text-main);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  padding-top: 0.85rem;
+}

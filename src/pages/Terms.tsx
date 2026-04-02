@@ -3,6 +3,7 @@ import { fallbackLegalDocuments } from '../data/fallbackContent';
 import { usePublicData } from '../hooks/usePublicData';
 import { useViewTracker } from '../hooks/useViewTracker';
 import type { LegalDocument } from '../types/content';
+import './Terms.css';
 
 const Terms = () => {
   const { data: doc } = usePublicData<LegalDocument>({
@@ -19,17 +20,17 @@ const Terms = () => {
     <div className="page-wrapper inner-page-padding">
       <div className="container section-padding">
         <motion.div
+          className="terms-header"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          style={{ marginBottom: '3rem' }}
         >
-          <h1 style={{ fontSize: '3rem', color: 'var(--color-accent)', marginBottom: '1rem' }}>{title}</h1>
-          <p style={{ color: 'var(--color-text-muted)' }}>
+          <h1 className="terms-title">{title}</h1>
+          <p className="terms-updated-at">
             Last Updated: {updatedAt ? new Date(updatedAt).toLocaleDateString() : '-'}
           </p>
         </motion.div>
-        <div style={{ color: 'var(--color-text-main)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+        <div className="terms-content">
           {content}
         </div>
       </div>
