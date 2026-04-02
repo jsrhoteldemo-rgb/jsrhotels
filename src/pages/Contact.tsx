@@ -36,26 +36,28 @@ const Contact = () => {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitStatus(null);
-    setIsSubmitting(true);
     const email = normalizeEmail(form.email);
     const phone = String(form.phone || '').trim();
 
     if (!isValidEmail(email)) {
       setSubmitStatus({ type: 'error', text: 'Please enter a valid email address.' });
-      setIsSubmitting(false);
       return;
     }
 
     if (phone && !isValidUsPhone(phone)) {
       setSubmitStatus({ type: 'error', text: 'Please enter a valid US phone number.' });
-      setIsSubmitting(false);
       return;
     }
+
+    setIsSubmitting(true);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
 
     try {
       await apiRequest<{ success: true; id: string }>('/api/public/contact-messages', {
         method: 'POST',
         body: JSON.stringify({ ...form, email }),
+        signal: controller.signal,
       });
 
       setForm({
@@ -67,11 +69,15 @@ const Contact = () => {
       });
       setSubmitStatus({ type: 'success', text: 'Thanks. Your message has been sent successfully.' });
     } catch (error) {
+      const isTimeout = (error as Error).name === 'AbortError';
       setSubmitStatus({
         type: 'error',
-        text: (error as Error).message || 'Unable to send your message right now. Please try again shortly.',
+        text: isTimeout
+          ? 'Request timed out. Please try again in a few seconds.'
+          : (error as Error).message || 'Unable to send your message right now. Please try again shortly.',
       });
     } finally {
+      window.clearTimeout(timeoutId);
       setIsSubmitting(false);
     }
   }

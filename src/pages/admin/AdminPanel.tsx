@@ -3,6 +3,15 @@ import type { CSSProperties, Dispatch, FormEvent, ReactNode, SetStateAction } fr
 import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
 import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   Activity,
   BriefcaseBusiness,
   Building2,
@@ -70,6 +79,7 @@ type AdminTabKey =
   | 'social'
   | 'contactInfo'
   | 'contactMessages'
+  | 'leads'
   | 'careers'
   | 'legal'
   | 'site'
@@ -125,6 +135,7 @@ interface DashboardPayload {
   uniqueVisitors: number;
   topSections: Array<{ sectionKey: string; views: number }>;
   topProperties: Array<{ propertyId?: string | null; title: string; views: number }>;
+  visitsTrend: Array<{ date: string; views: number }>;
 }
 
 interface AdminNotice {
@@ -191,6 +202,17 @@ interface CareerApplicationEntry {
   updatedAt: string;
 }
 
+interface LeadEntry {
+  id: string;
+  fullName?: string | null;
+  email: string;
+  source?: string | null;
+  notes?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 type ModerationModalState =
   | {
       kind: 'contact';
@@ -238,13 +260,14 @@ const tabItems: Array<{ key: AdminTabKey; label: string; icon: typeof LayoutDash
   { key: 'home', label: 'Home Blocks', icon: Home },
   { key: 'about', label: 'About', icon: FileText },
   { key: 'culture', label: 'Culture', icon: FileText },
-  { key: 'services', label: 'Services', icon: Wrench },
+  { key: 'services', label: 'Capabilities', icon: Wrench },
   { key: 'awards', label: 'Awards', icon: FileBadge },
   { key: 'team', label: 'Meet Our Team', icon: Users },
   { key: 'brands', label: 'Hotel Brands', icon: Building2 },
   { key: 'properties', label: 'Manage Portfolio', icon: GalleryVerticalEnd },
   { key: 'contactInfo', label: 'Contact Info', icon: Contact },
   { key: 'contactMessages', label: 'Contact Messages', icon: Inbox },
+  { key: 'leads', label: 'Leads', icon: Inbox },
   { key: 'careers', label: 'Careers Inbox', icon: BriefcaseBusiness },
   { key: 'social', label: 'Social Links', icon: Link2 },
   { key: 'legal', label: 'Legal', icon: FileBadge },
@@ -297,6 +320,11 @@ const careerStatusOptions: CareerApplicationStatus[] = [
   'SHORTLISTED',
   'REJECTED',
   'HIRED',
+];
+
+const leadSourceOptions: Array<{ value: 'NEWSLETTER' | 'MANUAL'; label: string }> = [
+  { value: 'NEWSLETTER', label: 'Newsletter' },
+  { value: 'MANUAL', label: 'Manually Added' },
 ];
 
 type HomeBlockSectionType =
@@ -446,6 +474,13 @@ function actionToneClass(action: string) {
   return 'status-warning';
 }
 
+function formatLeadSourceLabel(value: string | null | undefined) {
+  const normalized = String(value || '').trim().toUpperCase();
+  const option = leadSourceOptions.find((item) => item.value === normalized);
+  if (option) return option.label;
+  return normalized ? formatSectionLabel(normalized) : 'Newsletter';
+}
+
 function buildQuery(params: Record<string, string | undefined>) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -455,6 +490,152 @@ function buildQuery(params: Record<string, string | undefined>) {
   });
   const queryString = query.toString();
   return queryString ? `?${queryString}` : '';
+}
+
+function formatDashboardDateLabel(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
+  if (!match) return value;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function DashboardTrendTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<{ payload?: { dateLabel?: string; views?: number } }>;
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  return (
+    <div className="dashboard-recharts-tooltip">
+      <strong>{row?.dateLabel || '-'}</strong>
+      <p>{row?.views ?? 0} visits</p>
+    </div>
+  );
+}
+
+function DashboardTrendChart({
+  data,
+}: {
+  data: Array<{ date: string; views: number }>;
+}) {
+  if (!data.length) {
+    return <p className="admin-empty">No visit trend data in this range.</p>;
+  }
+
+  const maxViews = Math.max(1, ...data.map((item) => item.views));
+  const totalViews = data.reduce((sum, item) => sum + item.views, 0);
+  const averageViews = Math.round(totalViews / data.length);
+  const latestViews = data[data.length - 1]?.views || 0;
+  const chartData = data.map((item) => ({
+    date: item.date,
+    dateLabel: formatDashboardDateLabel(item.date),
+    views: item.views,
+  }));
+
+  const first = data[0];
+  const last = data[data.length - 1];
+
+  return (
+    <div className="dashboard-trend-wrap">
+      <div className="dashboard-trend-stats">
+        <article>
+          <span>Peak</span>
+          <strong>{maxViews}</strong>
+        </article>
+        <article>
+          <span>Average</span>
+          <strong>{averageViews}</strong>
+        </article>
+        <article>
+          <span>Latest</span>
+          <strong>{latestViews}</strong>
+        </article>
+      </div>
+
+      <div className="dashboard-trend-chart-shell">
+        <div className="dashboard-trend-recharts">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart
+              key={`${first.date}-${last.date}-${maxViews}-${latestViews}`}
+              data={chartData}
+              margin={{ top: 10, right: 20, left: 4, bottom: 8 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(122, 97, 23, 0.12)" />
+              <XAxis
+                dataKey="dateLabel"
+                tick={{ fill: '#6a5c42', fontSize: 11, fontWeight: 600 }}
+                tickLine={false}
+                axisLine={false}
+                minTickGap={28}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: '#7b6d52', fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+                width={34}
+              />
+              <Tooltip content={<DashboardTrendTooltip />} cursor={{ stroke: 'rgba(122, 97, 23, 0.22)', strokeWidth: 1 }} />
+              <Line
+                type="monotone"
+                dataKey="views"
+                stroke="#6e5514"
+                strokeWidth={1.8}
+                dot={false}
+                activeDot={{ r: 3.2, stroke: '#fff8ea', strokeWidth: 1.2, fill: '#8f7220' }}
+                isAnimationActive
+                animationDuration={550}
+                animationEasing="ease-out"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardBarChart({
+  items,
+  emptyText,
+}: {
+  items: Array<{ label: string; value: number }>;
+  emptyText: string;
+}) {
+  if (!items.length) {
+    return <p className="admin-empty">{emptyText}</p>;
+  }
+
+  const maxValue = Math.max(1, ...items.map((item) => item.value));
+  const sorted = [...items].sort((a, b) => b.value - a.value);
+
+  return (
+    <ol className="dashboard-top-list">
+      {sorted.map((item, index) => {
+        const ratio = Math.round((item.value / maxValue) * 100);
+        return (
+          <li className="dashboard-top-row" key={`${item.label}-${index}`}>
+            <span className={`dashboard-top-rank ${index === 0 ? 'top' : ''}`}>{index + 1}</span>
+            <span className="dashboard-top-label" title={item.label}>
+              {item.label}
+            </span>
+            <span className="dashboard-top-meta">
+              <strong>{item.value}</strong>
+              <small>{ratio}%</small>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 function GenericListManager<T extends { id: string }>({
@@ -1584,6 +1765,8 @@ const AdminPanel = () => {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessageEntry[]>([]);
   const [contactMessageStatusFilter, setContactMessageStatusFilter] = useState<'ALL' | ContactMessageStatus>('ALL');
+  const [contactMessagesRefreshing, setContactMessagesRefreshing] = useState(false);
+  const [contactMessagesLastSyncAt, setContactMessagesLastSyncAt] = useState<string | null>(null);
 
   const [careerApplications, setCareerApplications] = useState<CareerApplicationEntry[]>([]);
   const [careerOpportunities, setCareerOpportunities] = useState<CareerOpportunityEntry[]>([]);
@@ -1591,6 +1774,8 @@ const AdminPanel = () => {
   const [careerJobFilter, setCareerJobFilter] = useState<'ALL' | string>('ALL');
   const [moderationModal, setModerationModal] = useState<ModerationModalState | null>(null);
   const [isModalSubmitting, setIsModalSubmitting] = useState(false);
+  const [adminDeleteTarget, setAdminDeleteTarget] = useState<AdminUser | null>(null);
+  const [isAdminDeleteSubmitting, setIsAdminDeleteSubmitting] = useState(false);
 
   const [siteForm, setSiteForm] = useState({
     brandName: 'JSR Hotels',
@@ -1870,14 +2055,23 @@ const AdminPanel = () => {
     }
   }
 
-  async function handleAdminDelete(id: string) {
+  async function handleAdminDelete(admin: AdminUser) {
+    setAdminDeleteTarget(admin);
+  }
+
+  async function confirmAdminDelete() {
+    if (!adminDeleteTarget) return;
+    setIsAdminDeleteSubmitting(true);
     try {
-      await apiRequest(`/api/admin/admins/${id}`, { method: 'DELETE' });
+      await apiRequest(`/api/admin/admins/${adminDeleteTarget.id}`, { method: 'DELETE' });
       pushNotice('success', 'Admin removed successfully.');
+      setAdminDeleteTarget(null);
       await Promise.all([loadAdmins(), loadActivityLogs()]);
     } catch (err) {
       const message = (err as Error).message;
       pushNotice('error', message);
+    } finally {
+      setIsAdminDeleteSubmitting(false);
     }
   }
 
@@ -2102,12 +2296,22 @@ const AdminPanel = () => {
     }
   }
 
-  async function loadContactMessages() {
-    const query = buildQuery({
-      status: contactMessageStatusFilter === 'ALL' ? undefined : contactMessageStatusFilter,
-    });
-    const messages = await apiRequest<ContactMessageEntry[]>(`/api/admin/contact-messages${query}`);
-    setContactMessages(messages);
+  async function loadContactMessages(options?: { silent?: boolean }) {
+    if (!options?.silent) {
+      setContactMessagesRefreshing(true);
+    }
+    try {
+      const query = buildQuery({
+        status: contactMessageStatusFilter === 'ALL' ? undefined : contactMessageStatusFilter,
+      });
+      const messages = await apiRequest<ContactMessageEntry[]>(`/api/admin/contact-messages${query}`);
+      setContactMessages(messages);
+      setContactMessagesLastSyncAt(new Date().toISOString());
+    } finally {
+      if (!options?.silent) {
+        setContactMessagesRefreshing(false);
+      }
+    }
   }
 
   async function updateContactMessage(
@@ -2133,8 +2337,11 @@ const AdminPanel = () => {
 
     try {
       await apiRequest(`/api/admin/contact-messages/${id}`, { method: 'DELETE' });
+      setContactMessages((prev) => prev.filter((item) => item.id !== id));
       pushNotice('success', 'Contact message deleted from inbox.');
-      await Promise.all([loadContactMessages(), loadActivityLogs()]);
+      void Promise.all([loadContactMessages({ silent: true }), loadActivityLogs()]).catch((err) =>
+        pushNotice('error', (err as Error).message),
+      );
       return true;
     } catch (err) {
       pushNotice('error', (err as Error).message);
@@ -2179,8 +2386,11 @@ const AdminPanel = () => {
 
     try {
       await apiRequest(`/api/admin/career-applications/${id}`, { method: 'DELETE' });
+      setCareerApplications((prev) => prev.filter((item) => item.id !== id));
       pushNotice('success', 'Career application deleted from inbox.');
-      await Promise.all([loadCareerApplications(), loadActivityLogs()]);
+      void Promise.all([loadCareerApplications(), loadActivityLogs()]).catch((err) =>
+        pushNotice('error', (err as Error).message),
+      );
       return true;
     } catch (err) {
       pushNotice('error', (err as Error).message);
@@ -2500,6 +2710,33 @@ const AdminPanel = () => {
   }, [contactMessageStatusFilter]);
 
   useEffect(() => {
+    if (!token || tab !== 'contactMessages') return;
+
+    const refreshQuietly = () => {
+      loadContactMessages({ silent: true }).catch(() => {});
+    };
+
+    refreshQuietly();
+
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) return;
+      refreshQuietly();
+    }, 10000);
+
+    const handleFocus = () => refreshQuietly();
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, tab, contactMessageStatusFilter]);
+
+  useEffect(() => {
     if (!token) return;
     loadCareerApplications().catch((err) => pushNotice('error', (err as Error).message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2756,37 +2993,37 @@ const AdminPanel = () => {
                   </article>
                 </div>
 
+                <div className="dashboard-charts">
+                  <article className="dashboard-panel dashboard-trend-panel">
+                    <h3>Visits Trend</h3>
+                    <p className="dashboard-panel-meta">
+                      Daily page visits for the selected date range.
+                    </p>
+                    <DashboardTrendChart data={dashboard?.visitsTrend || []} />
+                  </article>
+                </div>
+
                 <div className="dashboard-panels">
                   <article className="dashboard-panel">
                     <h3>Top Viewed Sections</h3>
-                    {!dashboard?.topSections.length ? (
-                      <p className="admin-empty">No data in this range.</p>
-                    ) : (
-                      <ul className="dashboard-list">
-                        {dashboard.topSections.map((item) => (
-                          <li key={item.sectionKey}>
-                            <span>{formatSectionLabel(item.sectionKey || 'unknown')}</span>
-                            <strong>{item.views}</strong>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <DashboardBarChart
+                      items={(dashboard?.topSections || []).map((item) => ({
+                        label: formatSectionLabel(item.sectionKey || 'unknown'),
+                        value: item.views,
+                      }))}
+                      emptyText="No section data in this range."
+                    />
                   </article>
 
                   <article className="dashboard-panel">
                     <h3>Top Viewed Properties</h3>
-                    {!dashboard?.topProperties.length ? (
-                      <p className="admin-empty">No data in this range.</p>
-                    ) : (
-                      <ul className="dashboard-list">
-                        {dashboard.topProperties.map((item, index) => (
-                          <li key={`${item.title}-${index}`}>
-                            <span>{item.title}</span>
-                            <strong>{item.views}</strong>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <DashboardBarChart
+                      items={(dashboard?.topProperties || []).map((item) => ({
+                        label: item.title || 'Unknown Property',
+                        value: item.views,
+                      }))}
+                      emptyText="No property data in this range."
+                    />
                   </article>
                 </div>
               </section>
@@ -3057,7 +3294,7 @@ const AdminPanel = () => {
                           type="button"
                           className="btn-danger"
                           disabled={admin.id === currentAdmin?.id || admin.isSystemAdmin}
-                          onClick={() => handleAdminDelete(admin.id)}
+                          onClick={() => handleAdminDelete(admin)}
                         >
                           Remove
                         </button>
@@ -3189,9 +3426,9 @@ const AdminPanel = () => {
 
             {tab === 'services' && (
               <GenericListManager<ServiceItem>
-                title="Services"
-                subtitle="Add unlimited service cards with optional icon and image."
-                entityLabel="Service"
+                title="Capabilities"
+                subtitle="Add unlimited capability cards with optional icon and image."
+                entityLabel="Capability"
                 onFeedback={(type, message) => pushNotice(type, message)}
                 endpoint="/api/admin/services"
                 defaults={{
@@ -3207,7 +3444,7 @@ const AdminPanel = () => {
                     <label>
                       <span>Title</span>
                       <input
-                        placeholder="Service title"
+                        placeholder="Capability title"
                         value={String(form.title || '')}
                         onChange={(e) =>
                           setForm((prev) => ({ ...prev, title: e.target.value }))
@@ -3217,7 +3454,7 @@ const AdminPanel = () => {
                     <label>
                       <span>Description</span>
                       <textarea
-                        placeholder="Service description"
+                        placeholder="Capability description"
                         value={String(form.description || '')}
                         onChange={(e) =>
                           setForm((prev) => ({ ...prev, description: e.target.value }))
@@ -4402,25 +4639,44 @@ const AdminPanel = () => {
                     <div>
                       <h2>Contact Messages</h2>
                       <p>Review all form submissions and open each message to manage status and notes.</p>
+                      {contactMessagesLastSyncAt && (
+                        <p className="admin-item-meta">
+                          Last synced: {new Date(contactMessagesLastSyncAt).toLocaleTimeString()}
+                        </p>
+                      )}
                     </div>
-                    <label>
-                      <span>Status Filter</span>
-                      <select
-                        value={contactMessageStatusFilter}
-                        onChange={(event) =>
-                          setContactMessageStatusFilter(
-                            event.target.value as 'ALL' | ContactMessageStatus,
-                          )
-                        }
+                    <div className="inline-group compact">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => {
+                          loadContactMessages().catch((err) =>
+                            pushNotice('error', (err as Error).message),
+                          );
+                        }}
+                        disabled={contactMessagesRefreshing}
                       >
-                        <option value="ALL">All Statuses</option>
-                        {contactMessageStatusOptions.map((status) => (
-                          <option key={status} value={status}>
-                            {formatSectionLabel(status)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                        {contactMessagesRefreshing ? 'Refreshing...' : 'Refresh'}
+                      </button>
+                      <label>
+                        <span>Status Filter</span>
+                        <select
+                          value={contactMessageStatusFilter}
+                          onChange={(event) =>
+                            setContactMessageStatusFilter(
+                              event.target.value as 'ALL' | ContactMessageStatus,
+                            )
+                          }
+                        >
+                          <option value="ALL">All Statuses</option>
+                          {contactMessageStatusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {formatSectionLabel(status)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
 
                   {contactMessages.length === 0 ? (
@@ -4463,6 +4719,115 @@ const AdminPanel = () => {
                     </div>
                   )}
                 </section>
+            )}
+
+            {tab === 'leads' && (
+              <GenericListManager<LeadEntry>
+                title="Leads"
+                subtitle="Manage newsletter and inquiry leads collected from the website."
+                entityLabel="Lead"
+                onFeedback={(type, message) => {
+                  pushNotice(type, message);
+                  if (type === 'success') {
+                    loadActivityLogs().catch(() => {});
+                  }
+                }}
+                endpoint="/api/admin/leads"
+                defaults={{
+                  fullName: '',
+                  email: '',
+                  source: 'MANUAL',
+                  notes: '',
+                  isActive: true,
+                }}
+                renderFields={(form, setForm) => (
+                  <>
+                    <div className="admin-form-grid two">
+                      <label>
+                        <span>Full Name</span>
+                        <input
+                          placeholder="Optional"
+                          value={String(form.fullName || '')}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, fullName: e.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>Email*</span>
+                        <input
+                          required
+                          type="email"
+                          placeholder="lead@example.com"
+                          value={String(form.email || '')}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, email: e.target.value }))
+                          }
+                        />
+                      </label>
+                    </div>
+                    <label>
+                      <span>Source</span>
+                      <select
+                        value={String(form.source || 'MANUAL').toUpperCase()}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, source: e.target.value }))
+                        }
+                      >
+                        {leadSourceOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Notes</span>
+                      <textarea
+                        rows={4}
+                        placeholder="Optional admin notes"
+                        value={String(form.notes || '')}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, notes: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="toggle-label">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form.isActive)}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, isActive: e.target.checked }))
+                        }
+                      />
+                      <span>Active</span>
+                    </label>
+                  </>
+                )}
+                toPayload={(form) => ({
+                  fullName: String(form.fullName || '').trim() || null,
+                  email: normalizeEmail(String(form.email || '')),
+                  source: String(form.source || '').trim().toUpperCase() || 'MANUAL',
+                  notes: String(form.notes || '').trim() || null,
+                  isActive: Boolean(form.isActive),
+                })}
+                summary={(item) => (
+                  <>
+                    <h3>{item.fullName || 'Unnamed Lead'}</h3>
+                    <p className="admin-item-meta">{item.email}</p>
+                    <div className="admin-chip-row">
+                      <span className={`admin-pill ${item.isActive ? 'status-success' : 'status-danger'}`}>
+                        {item.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                      <span className="admin-pill muted">{formatLeadSourceLabel(item.source)}</span>
+                    </div>
+                    {item.notes ? <p className="admin-item-meta">{item.notes}</p> : null}
+                    <p className="admin-item-meta">
+                      Added: {new Date(item.createdAt).toLocaleString()}
+                    </p>
+                  </>
+                )}
+              />
             )}
 
             {tab === 'careers' && (
@@ -4977,6 +5342,53 @@ const AdminPanel = () => {
                   </div>
                 )}
               </section>
+            )}
+
+            {adminDeleteTarget && (
+              <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
+                <section className="admin-modal">
+                  <div className="admin-section-head split">
+                    <div>
+                      <h3>Confirm Admin Removal</h3>
+                      <p>{adminDeleteTarget.fullName}</p>
+                      <p className="admin-item-meta">{adminDeleteTarget.email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setAdminDeleteTarget(null)}
+                      disabled={isAdminDeleteSubmitting}
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="admin-modal-body">
+                    <p className="admin-message-body">
+                      This action will permanently remove admin access for this account. This cannot be undone.
+                    </p>
+                  </div>
+
+                  <div className="admin-form-actions">
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      onClick={confirmAdminDelete}
+                      disabled={isAdminDeleteSubmitting}
+                    >
+                      {isAdminDeleteSubmitting ? 'Removing...' : 'Yes, Remove Admin'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setAdminDeleteTarget(null)}
+                      disabled={isAdminDeleteSubmitting}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </section>
+              </div>
             )}
 
             {moderationModal && (

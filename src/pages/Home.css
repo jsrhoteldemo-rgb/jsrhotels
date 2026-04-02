@@ -347,6 +347,7 @@
   flex: 1;
   max-width: 500px;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .nl-form input {
@@ -366,6 +367,21 @@
 
 .nl-form .btn-primary {
   padding: 1rem 2rem;
+}
+
+.nl-feedback {
+  margin: 0;
+  width: 100%;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.nl-feedback.success {
+  color: #1b7f3a;
+}
+
+.nl-feedback.error {
+  color: #b42318;
 }
 
 /* Responsive Overrides */

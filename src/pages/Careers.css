@@ -170,6 +170,23 @@
   color: #b42318;
 }
 
+.careers-no-openings {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 1.1rem;
+}
+
+.careers-no-openings h3 {
+  margin: 0 0 0.45rem;
+  color: var(--color-text-main);
+}
+
+.careers-no-openings p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
 .careers-form button:disabled {
   opacity: 0.8;
   cursor: not-allowed;

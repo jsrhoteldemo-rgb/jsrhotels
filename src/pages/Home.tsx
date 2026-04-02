@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import type { ReactNode } from 'react';
-import { ArrowRight, Building2, TrendingUp, Users } from 'lucide-react';
+import type { FormEvent, ReactNode } from 'react';
+import { Building2, TrendingUp, Users } from 'lucide-react';
+import { apiRequest } from '../api/http';
 import { resolveAssetUrl } from '../config/api';
 import { fallbackHomeBlocks } from '../data/fallbackContent';
 import { usePublicData } from '../hooks/usePublicData';
 import { useViewTracker } from '../hooks/useViewTracker';
 import type { HomeBlock } from '../types/content';
+import { isValidEmail, normalizeEmail } from '../utils/validation';
 import './Home.css';
 
 function getBlockImage(block?: HomeBlock | null) {
@@ -55,6 +58,40 @@ const Home = () => {
   const newsItems = getPayload<{ items?: Array<{ date: string; title: string; desc: string }> }>(news).items || [];
   const accoladeItems =
     getPayload<{ items?: Array<{ title: string; desc: string }> }>(accolades).items || [];
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadFeedback, setLeadFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  async function handleLeadSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLeadFeedback(null);
+
+    const email = normalizeEmail(leadEmail);
+    if (!isValidEmail(email)) {
+      setLeadFeedback({ type: 'error', text: 'Please enter a valid email address.' });
+      return;
+    }
+
+    setLeadSubmitting(true);
+    try {
+      await apiRequest<{ success: true; id: string; duplicate?: boolean }>('/api/public/leads', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          source: 'NEWSLETTER',
+        }),
+      });
+      setLeadEmail('');
+      setLeadFeedback({ type: 'success', text: 'Thanks for subscribing. We will stay in touch.' });
+    } catch (error) {
+      setLeadFeedback({
+        type: 'error',
+        text: (error as Error).message || 'Unable to subscribe right now. Please try again.',
+      });
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }
 
   return (
     <div className="home-wrapper">
@@ -220,9 +257,6 @@ const Home = () => {
                       <span className="news-date">{item.date}</span>
                       <h4>{item.title}</h4>
                       <p>{item.desc}</p>
-                      <button className="link-accent" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        Read Article <ArrowRight size={16} />
-                      </button>
                     </div>
                   ))}
                 </motion.div>
@@ -266,10 +300,21 @@ const Home = () => {
                 <h2>{newsletter.heading}</h2>
                 <p>{newsletter.description}</p>
               </div>
-              <div className="nl-form">
-                <input type="email" placeholder="Your Email Address" />
-                <button className="btn-primary">Subscribe</button>
-              </div>
+              <form className="nl-form" onSubmit={handleLeadSubmit}>
+                <input
+                  type="email"
+                  placeholder="Your Email Address"
+                  value={leadEmail}
+                  required
+                  onChange={(e) => setLeadEmail(e.target.value)}
+                />
+                <button className="btn-primary" type="submit" disabled={leadSubmitting}>
+                  {leadSubmitting ? 'Submitting...' : 'Subscribe'}
+                </button>
+                {leadFeedback && (
+                  <p className={`nl-feedback ${leadFeedback.type}`}>{leadFeedback.text}</p>
+                )}
+              </form>
             </motion.div>
           </div>
         </section>

@@ -53,6 +53,14 @@ const Careers = () => {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (!jobs.length) {
+      setFeedback({
+        type: 'error',
+        text: 'No active job opportunities are available right now. Please check back soon.',
+      });
+      return;
+    }
+
     if (!form.jobOpportunityId.trim()) {
       setFeedback({ type: 'error', text: 'Please select a job opportunity before applying.' });
       return;
@@ -176,7 +184,16 @@ const Careers = () => {
             transition={{ duration: 0.7 }}
             className="careers-form-wrap glass-effect"
           >
-            <form className="careers-form" onSubmit={handleSubmit}>
+            {jobs.length === 0 ? (
+              <div className="careers-no-openings">
+                <h3>No Open Roles Right Now</h3>
+                <p>
+                  We currently do not have active job opportunities. Please check back later for
+                  new openings.
+                </p>
+              </div>
+            ) : (
+              <form className="careers-form" onSubmit={handleSubmit}>
               <label>
                 <span>Selected Job Opportunity</span>
                 <select
@@ -294,7 +311,8 @@ const Careers = () => {
               <button type="submit" className="btn-primary" disabled={isSubmitting || !jobs.length}>
                 {isSubmitting ? 'Submitting...' : 'Submit Application'}
               </button>
-            </form>
+              </form>
+            )}
           </motion.section>
         </div>
       </div>

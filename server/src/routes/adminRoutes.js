@@ -17,6 +17,40 @@ import {
 
 const router = Router();
 
+function parseDateInput(value, boundary = 'start') {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+
+  const raw = String(value).trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  const hours = boundary === 'end' ? 23 : 0;
+  const minutes = boundary === 'end' ? 59 : 0;
+  const seconds = boundary === 'end' ? 59 : 0;
+  const milliseconds = boundary === 'end' ? 999 : 0;
+
+  const parsed = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds, milliseconds));
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return parsed;
+}
+
+function toUtcDateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfUtcDay(date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+}
+
+function addUtcDays(date, days) {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
 const HOME_BLOCK_TYPES_REQUIRING_IMAGE = new Set(['hero', 'intro', 'featured', 'leadership']);
 
 function normalizeHomeBlockType(value) {
@@ -204,12 +238,23 @@ function registerContentPageSectionRoutes({ path, pageKey, entityType }) {
 
 router.get('/dashboard', async (req, res) => {
   const { from, to } = req.query;
+  const fromDate = parseDateInput(from, 'start');
+  const toDate = parseDateInput(to, 'end');
+
+  if ((from && !fromDate) || (to && !toDate)) {
+    return res.status(400).json({ message: 'Invalid date range. Use YYYY-MM-DD format.' });
+  }
+
+  if (fromDate && toDate && fromDate.getTime() > toDate.getTime()) {
+    return res.status(400).json({ message: 'Invalid date range. "From" cannot be after "To".' });
+  }
+
   const where = {
-    ...(from || to
+    ...(fromDate || toDate
       ? {
           createdAt: {
-            ...(from ? { gte: new Date(String(from)) } : {}),
-            ...(to ? { lte: new Date(String(to)) } : {}),
+            ...(fromDate ? { gte: fromDate } : {}),
+            ...(toDate ? { lte: toDate } : {}),
           },
         }
       : {}),
@@ -259,11 +304,39 @@ router.get('/dashboard', async (req, res) => {
     views: entry._count.portfolioPropertyId,
   }));
 
+  const trendEvents = await prisma.viewEvent.findMany({
+    where,
+    select: { createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  const trendMap = new Map();
+  trendEvents.forEach((event) => {
+    const key = toUtcDateKey(startOfUtcDay(new Date(event.createdAt)));
+    trendMap.set(key, (trendMap.get(key) || 0) + 1);
+  });
+
+  const trendEnd = startOfUtcDay(toDate || new Date());
+  const trendStart = startOfUtcDay(fromDate || addUtcDays(trendEnd, -13));
+  const visitsTrend = [];
+
+  for (
+    let cursor = trendStart;
+    cursor.getTime() <= trendEnd.getTime();
+    cursor = addUtcDays(cursor, 1)
+  ) {
+    const key = toUtcDateKey(cursor);
+    visitsTrend.push({
+      date: key,
+      views: trendMap.get(key) || 0,
+    });
+  }
+
   return res.json({
     totalVisits,
     uniqueVisitors: uniqueVisitors.length,
     topSections: topSections.map((item) => ({ sectionKey: item.sectionKey, views: item._count.sectionKey })),
     topProperties,
+    visitsTrend,
   });
 });
 
@@ -631,6 +704,132 @@ router.delete('/contact-messages/:id', async (req, res) => {
     admin: req.admin,
     action: 'DELETE',
     entityType: 'CONTACT_MESSAGE',
+    entityId: existing.id,
+    beforeJson: existing,
+  });
+
+  return res.json({ success: true });
+});
+
+router.get('/leads', async (req, res) => {
+  const { isActive, source } = req.query;
+
+  const leads = await prisma.lead.findMany({
+    where: {
+      ...(isActive === 'true' ? { isActive: true } : {}),
+      ...(isActive === 'false' ? { isActive: false } : {}),
+      ...(source ? { source: String(source) } : {}),
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 1000,
+  });
+
+  return res.json(leads);
+});
+
+router.post('/leads', async (req, res) => {
+  const fullName = String(req.body.fullName || '').trim();
+  const email = normalizeEmail(req.body.email);
+  const source = String(req.body.source || 'MANUAL').trim() || 'MANUAL';
+  const notes = String(req.body.notes || '').trim();
+  const isActive = req.body.isActive !== undefined ? Boolean(req.body.isActive) : true;
+
+  if (!email) {
+    return res.status(400).json({ message: 'email is required' });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  const existing = await prisma.lead.findUnique({ where: { email } });
+  if (existing) {
+    return res.status(400).json({ message: 'Lead with this email already exists' });
+  }
+
+  const created = await prisma.lead.create({
+    data: {
+      fullName: fullName || null,
+      email,
+      source,
+      notes: notes || null,
+      isActive,
+    },
+  });
+
+  await logActivity({
+    admin: req.admin,
+    action: 'CREATE',
+    entityType: 'LEAD',
+    entityId: created.id,
+    afterJson: created,
+  });
+
+  return res.status(201).json(created);
+});
+
+router.put('/leads/:id', async (req, res) => {
+  const existing = await prisma.lead.findUnique({ where: { id: req.params.id } });
+  if (!existing) {
+    return res.status(404).json({ message: 'Lead not found' });
+  }
+
+  const payload = {
+    fullName: req.body.fullName !== undefined ? String(req.body.fullName || '').trim() || null : existing.fullName,
+    email: req.body.email !== undefined ? normalizeEmail(req.body.email) : existing.email,
+    source: req.body.source !== undefined ? String(req.body.source || '').trim() || null : existing.source,
+    notes: req.body.notes !== undefined ? String(req.body.notes || '').trim() || null : existing.notes,
+    isActive: req.body.isActive !== undefined ? Boolean(req.body.isActive) : existing.isActive,
+  };
+
+  if (!payload.email) {
+    return res.status(400).json({ message: 'email is required' });
+  }
+
+  if (!isValidEmail(payload.email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  const duplicate = await prisma.lead.findFirst({
+    where: {
+      email: payload.email,
+      id: { not: existing.id },
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return res.status(400).json({ message: 'Lead with this email already exists' });
+  }
+
+  const updated = await prisma.lead.update({
+    where: { id: existing.id },
+    data: payload,
+  });
+
+  await logActivity({
+    admin: req.admin,
+    action: 'UPDATE',
+    entityType: 'LEAD',
+    entityId: updated.id,
+    beforeJson: existing,
+    afterJson: updated,
+  });
+
+  return res.json(updated);
+});
+
+router.delete('/leads/:id', async (req, res) => {
+  const existing = await prisma.lead.findUnique({ where: { id: req.params.id } });
+  if (!existing) {
+    return res.status(404).json({ message: 'Lead not found' });
+  }
+
+  await prisma.lead.delete({ where: { id: existing.id } });
+
+  await logActivity({
+    admin: req.admin,
+    action: 'DELETE',
+    entityType: 'LEAD',
     entityId: existing.id,
     beforeJson: existing,
   });

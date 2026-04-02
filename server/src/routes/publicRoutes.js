@@ -151,6 +151,47 @@ router.post('/contact-messages', async (req, res) => {
   return res.status(201).json({ success: true, id: created.id });
 });
 
+router.post('/leads', async (req, res) => {
+  const fullName = String(req.body.fullName || '').trim();
+  const email = normalizeEmail(req.body.email);
+  const source = String(req.body.source || 'NEWSLETTER').trim() || 'NEWSLETTER';
+  const notes = String(req.body.notes || '').trim();
+
+  if (!email) {
+    return res.status(400).json({ message: 'email is required' });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  const existing = await prisma.lead.findUnique({ where: { email } });
+  if (existing) {
+    const updated = await prisma.lead.update({
+      where: { id: existing.id },
+      data: {
+        fullName: fullName || existing.fullName,
+        source: source || existing.source,
+        notes: notes || existing.notes,
+        isActive: true,
+      },
+    });
+    return res.json({ success: true, id: updated.id, duplicate: true });
+  }
+
+  const created = await prisma.lead.create({
+    data: {
+      fullName: fullName || null,
+      email,
+      source: source || 'NEWSLETTER',
+      notes: notes || null,
+      isActive: true,
+    },
+  });
+
+  return res.status(201).json({ success: true, id: created.id });
+});
+
 router.get('/careers/opportunities', async (req, res) => {
   const opportunities = await prisma.jobOpportunity.findMany({
     where: { isActive: true },

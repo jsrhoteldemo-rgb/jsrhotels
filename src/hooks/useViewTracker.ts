@@ -21,13 +21,14 @@ interface ViewTrackOptions {
 export function useViewTracker({ path, sectionKey, portfolioPropertyId }: ViewTrackOptions) {
   useEffect(() => {
     const sessionId = getSessionId();
+    const resolvedSectionKey = sectionKey || path;
 
     apiRequest('/api/public/view-events', {
       method: 'POST',
       body: JSON.stringify({
         sessionId,
         path,
-        sectionKey,
+        sectionKey: resolvedSectionKey,
         portfolioPropertyId,
       }),
     }).catch(() => {

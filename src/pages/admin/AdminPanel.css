@@ -968,6 +968,12 @@ button.admin-user-pill.active {
   color: #332a17;
 }
 
+.dashboard-charts {
+  display: grid;
+  gap: 0.72rem;
+  margin-bottom: 0.72rem;
+}
+
 .dashboard-panels {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -984,6 +990,144 @@ button.admin-user-pill.active {
 .dashboard-panel h3 {
   margin: 0 0 0.58rem;
   font-size: 0.96rem;
+}
+
+.dashboard-panel-meta {
+  margin: -0.2rem 0 0.55rem;
+  color: #6a5c42;
+  font-size: 0.84rem;
+}
+
+.dashboard-trend-wrap {
+  display: grid;
+  gap: 0.52rem;
+}
+
+.dashboard-trend-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.52rem;
+}
+
+.dashboard-trend-stats article {
+  border: 1px solid #e6dbc8;
+  border-radius: 10px;
+  background: #fff9ef;
+  padding: 0.42rem 0.54rem;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.dashboard-trend-stats span {
+  color: #7a6a4f;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.dashboard-trend-stats strong {
+  color: #3d3119;
+  font-size: 1.04rem;
+  line-height: 1;
+}
+
+.dashboard-trend-chart-shell {
+  border: 1px solid #ebdec8;
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 0.35rem 0.25rem 0.15rem;
+}
+
+.dashboard-trend-recharts {
+  width: 100%;
+  height: 220px;
+}
+
+.dashboard-recharts-tooltip {
+  border: 1px solid #e4d7c1;
+  background: #fffdf8;
+  border-radius: 9px;
+  padding: 0.45rem 0.55rem;
+  box-shadow: 0 10px 24px rgba(40, 31, 16, 0.14);
+}
+
+.dashboard-recharts-tooltip strong {
+  display: block;
+  color: #3d3119;
+  font-size: 0.78rem;
+  margin-bottom: 0.12rem;
+}
+
+.dashboard-recharts-tooltip p {
+  margin: 0;
+  color: #6e5f43;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.dashboard-top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.48rem;
+}
+
+.dashboard-top-row {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid #eadfcd;
+  border-radius: 10px;
+  background: #fffaf1;
+  padding: 0.48rem 0.56rem;
+}
+
+.dashboard-top-rank {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: #efe3cb;
+  color: #6a5c42;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.dashboard-top-rank.top {
+  background: #7a6117;
+  color: #fff7e6;
+}
+
+.dashboard-top-label {
+  min-width: 0;
+  color: #4f442f;
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-top-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.dashboard-top-meta strong {
+  color: #3e3218;
+  font-size: 0.88rem;
+}
+
+.dashboard-top-meta small {
+  color: #7e6f52;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .dashboard-list {
@@ -1470,6 +1614,10 @@ button.admin-user-pill.active {
   /* ── Dashboard grids ── */
   .dashboard-panels,
   .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-trend-stats {
     grid-template-columns: 1fr;
   }
 

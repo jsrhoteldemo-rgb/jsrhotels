@@ -143,7 +143,7 @@ const PropertyDetail = () => {
             </div>
           </div>
 
-          <div className="glass-effect" style={{ padding: '1.5rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+          <div className="glass-effect property-detail-info-card">
             <div style={{ marginBottom: '1rem' }}>
               <span
                 style={{
@@ -183,15 +183,15 @@ const PropertyDetail = () => {
                 <h3 style={{ margin: '1.5rem 0 0.75rem 0' }}>Additional Information</h3>
                 {'html' in property.keyInfo ? (
                   <div
-                    style={{ color: 'var(--color-text-muted)', lineHeight: 1.6 }}
+                    className="property-rich-html"
                     dangerouslySetInnerHTML={{
                       __html: String((property.keyInfo as { html?: unknown }).html || ''),
                     }}
                   />
                 ) : (
-                  <ul style={{ paddingLeft: '1.1rem', color: 'var(--color-text-muted)' }}>
+                  <ul className="property-detail-key-list">
                     {Object.entries(property.keyInfo).map(([key, value]) => (
-                      <li key={key} style={{ marginBottom: '0.35rem' }}>
+                      <li key={key}>
                         <strong>{key}:</strong> {String(value)}
                       </li>
                     ))}
