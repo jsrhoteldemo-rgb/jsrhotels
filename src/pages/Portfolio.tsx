@@ -149,8 +149,18 @@ const Portfolio = () => {
                   type="button"
                   className={`portfolio-chip ${brandFilter === brand.id ? 'active' : ''}`}
                   onClick={() => setBrandFilter(brand.id)}
+                  aria-label={brand.name}
                 >
-                  {brand.name}
+                  {brand.logoAsset?.url ? (
+                    <img
+                      src={resolveAssetUrl(brand.logoAsset.url)}
+                      alt={brand.name}
+                      className="portfolio-chip-logo"
+                      loading="lazy"
+                    />
+                  ) : (
+                    brand.name
+                  )}
                 </button>
               ))}
             </div>

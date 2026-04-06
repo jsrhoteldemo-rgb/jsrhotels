@@ -4645,10 +4645,10 @@ const AdminPanel = () => {
                         </p>
                       )}
                     </div>
-                    <div className="inline-group compact">
+                    <div className="inline-group compact contact-messages-controls">
                       <button
                         type="button"
-                        className="btn-secondary"
+                        className="btn-secondary btn-refresh-inline"
                         onClick={() => {
                           loadContactMessages().catch((err) =>
                             pushNotice('error', (err as Error).message),
