@@ -243,6 +243,14 @@
   border: 1px solid rgba(255, 255, 255, 0.75);
 }
 
+.portfolio-brand-chip-logo {
+  display: block;
+  width: auto;
+  height: 15px;
+  max-width: 78px;
+  object-fit: contain;
+}
+
 .portfolio-card-body {
   padding: 0.95rem 0.9rem 1rem;
 }

@@ -23,6 +23,15 @@ function getPropertyImage(property: PortfolioProperty) {
   return noImagePlaceholder;
 }
 
+function getPropertyBrand(property: PortfolioProperty, brands: HotelBrand[]) {
+  const fromProperty = property.brand;
+  if (fromProperty?.id) {
+    const matched = brands.find((item) => item.id === fromProperty.id);
+    return matched || fromProperty;
+  }
+  return brands.find((item) => item.id === property.brandId) || null;
+}
+
 const statusLabelMap: Record<PortfolioStatus, string> = {
   UNDER_CONSTRUCTION: 'Under Construction',
   COMPLETED: 'Completed',
@@ -81,7 +90,10 @@ const Portfolio = () => {
     return brandLookup.get(brandFilter) || 'Brand';
   }, [brandFilter, brandLookup]);
 
-  const renderCard = (property: PortfolioProperty, index: number) => (
+  const renderCard = (property: PortfolioProperty, index: number) => {
+    const propertyBrand = getPropertyBrand(property, brandsList);
+
+    return (
     <motion.article
       key={property.id}
       className="portfolio-card"
@@ -96,7 +108,18 @@ const Portfolio = () => {
 
         <div className="portfolio-card-topline">
           <span className="portfolio-status-chip">{statusLabelMap[property.status]}</span>
-          <span className="portfolio-brand-chip">{property.brand?.name || brandLookup.get(property.brandId) || 'Brand'}</span>
+          <span className="portfolio-brand-chip" title={propertyBrand?.name || brandLookup.get(property.brandId) || 'Brand'}>
+            {propertyBrand?.logoAsset?.url ? (
+              <img
+                src={resolveAssetUrl(propertyBrand.logoAsset.url)}
+                alt={propertyBrand.name || 'Brand'}
+                className="portfolio-brand-chip-logo"
+                loading="lazy"
+              />
+            ) : (
+              propertyBrand?.name || brandLookup.get(property.brandId) || 'Brand'
+            )}
+          </span>
         </div>
       </div>
 
@@ -113,7 +136,8 @@ const Portfolio = () => {
         </Link>
       </div>
     </motion.article>
-  );
+    );
+  };
 
   return (
     <div className="page-wrapper inner-page-padding portfolio-page">
